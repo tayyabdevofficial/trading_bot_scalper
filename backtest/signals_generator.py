@@ -119,33 +119,6 @@ def generate_signals_vectorized(strategy_name: str, params: dict, df: pd.DataFra
         signals[has_vol & has_body & bullish_engulf] = "BUY"
         signals[has_vol & has_body & bearish_engulf] = "SELL"
 
-    elif "vwap_micro_reversal" in name:
-        num_std = float(params.get("num_std", 2.5))
-        rsi_p = int(params.get("rsi_period", 14))
-        adx_max = float(params.get("adx_max", 30.0))
-
-        typical_p = (high + low + close) / 3.0
-        tp_vol = typical_p * volume
-        vwap = tp_vol.cumsum() / volume.cumsum().replace(0, 1e-9)
-        dev = (close - vwap) ** 2
-        roll_std = np.sqrt(dev.rolling(30).mean())
-
-        upper_band = vwap + (num_std * roll_std)
-        lower_band = vwap - (num_std * roll_std)
-
-        candle_rng = (high - low).replace(0, 1e-9)
-        lower_wick = np.minimum(close, open_p) - low
-        upper_wick = high - np.maximum(close, open_p)
-
-        rsi = BaseStrategy.calculate_rsi(close, rsi_p)
-        guard = (adx14 <= adx_max) & (atr_ratio <= 1.40)
-
-        bullish_pin = (low <= lower_band) & (lower_wick / candle_rng >= 0.35) & (rsi < 38) & (close >= open_p)
-        bearish_pin = (high >= upper_band) & (upper_wick / candle_rng >= 0.35) & (rsi > 62) & (close <= open_p)
-
-        signals[guard & bullish_pin] = "BUY"
-        signals[guard & bearish_pin] = "SELL"
-
     elif "rsi_divergence" in name:
         lookback = int(params.get("lookback", 25))
         rsi_p = int(params.get("rsi_period", 14))

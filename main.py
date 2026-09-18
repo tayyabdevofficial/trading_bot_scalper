@@ -63,8 +63,7 @@ class TradingBot:
         # Classify strategy type for Choppiness filter
         self.strategy_type = "TREND"
         if self.strategy_name in [
-            "Bollinger_Bands", "Stochastic_RSI", "VWAP_Deviation",
-            "VWAP_Micro_Reversal", "RSI_Divergence_Scalp"
+            "Bollinger_Bands", "Stochastic_RSI", "RSI_Divergence_Scalp"
         ]:
             self.strategy_type = "REVERSION"
 

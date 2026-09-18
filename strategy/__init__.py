@@ -7,7 +7,6 @@ from strategy.volume_delta import VolumeDeltaScalpStrategy
 from strategy.ema_ribbon import EMARibbonScalpStrategy
 from strategy.keltner_channel import KeltnerChannelBreakoutStrategy
 from strategy.hull_ma import HullMAScalpStrategy
-from strategy.vwap_micro_reversal import VWAPMicroReversalStrategy
 from strategy.rsi_divergence import RSIDivergenceScalpStrategy
 from strategy.engulfing_volume import EngulfingVolumeScalpStrategy
 from strategy.macd_zerocross import MACDZeroCrossScalpStrategy
@@ -18,7 +17,6 @@ STRATEGY_MAP = {
     "Squeeze_Momentum_Scalp": SqueezeMomentumScalpStrategy,
     "Volume_Delta_Scalp": VolumeDeltaScalpStrategy,
     "Engulfing_Volume_Scalp": EngulfingVolumeScalpStrategy,
-    "VWAP_Micro_Reversal": VWAPMicroReversalStrategy,
     "RSI_Divergence_Scalp": RSIDivergenceScalpStrategy,
     "Bollinger_Bands": BollingerBandsStrategy,
     "MACD_ZeroCross_Scalp": MACDZeroCrossScalpStrategy,

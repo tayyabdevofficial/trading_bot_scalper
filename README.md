@@ -11,8 +11,8 @@ An institutional-grade, high-frequency quantitative scalping bot and multi-pair 
 
 ## ✨ Key Features
 
-- ⚡ **13 Built-in Quantitative Scalping Strategies**:
-  - `Stochastic_RSI`, `Keltner_Channel_Breakout`, `RSI_Divergence_Scalp`, `Bollinger_Bands`, `VWAP_Micro_Reversal`, `Engulfing_Volume_Scalp`, `EMA_RSI_Crossover`, `SuperTrend`, `Hull_MA_Scalp`, `EMA_Ribbon_Scalp`, `Volume_Delta_Scalp`, `MACD_ZeroCross_Scalp`, `Squeeze_Momentum_Scalp`.
+- ⚡ **12 Built-in Quantitative Scalping Strategies**:
+  - `Stochastic_RSI`, `Keltner_Channel_Breakout`, `RSI_Divergence_Scalp`, `Bollinger_Bands`, `Engulfing_Volume_Scalp`, `EMA_RSI_Crossover`, `SuperTrend`, `Hull_MA_Scalp`, `EMA_Ribbon_Scalp`, `Volume_Delta_Scalp`, `MACD_ZeroCross_Scalp`, `Squeeze_Momentum_Scalp`.
 - 📊 **Multi-Pair Dual-Timeframe Backtest Engine**:
   - Evaluates **10,660+ strategy combinations** across **410+ Binance Futures symbols** simultaneously on `5m` and `15m` timeframes.
   - Multi-threaded chunk processing with automated local disk kline caching.
@@ -159,7 +159,6 @@ python main.py
 | **Keltner Channel Breakout** | Breakout | High-momentum channel envelope breakouts with ATR volatility expansion. |
 | **RSI Divergence Scalp** | Reversion | Regular and hidden divergence detector between price swings and RSI peaks. |
 | **Bollinger Bands** | Mean Reversion | Standard deviation boundary bounces in low-trend chop markets. |
-| **VWAP Micro Reversal** | Intraday Mean Reversion | Volume Weighted Average Price standard deviation band mean reversion. |
 | **Engulfing Volume Scalp** | Price Action | Bullish/Bearish engulfing candle patterns confirmed by anomalous volume spike. |
 | **EMA RSI Crossover** | Trend / Momentum | Fast/Slow EMA crossovers verified by RSI momentum filters. |
 | **SuperTrend** | Trend Following | Directional volatility band trailing stops and trend shifts. |

@@ -1232,7 +1232,6 @@
                                 <option value="Squeeze_Momentum_Scalp">⚡ LazyBear Squeeze Momentum Scalp</option>
                                 <option value="Volume_Delta_Scalp">⚡ Volume Delta Order Flow Scalp</option>
                                 <option value="Engulfing_Volume_Scalp">⚡ Engulfing Pattern Volume Scalp</option>
-                                <option value="VWAP_Micro_Reversal">⚡ VWAP Pinbar Reversal Scalp</option>
                                 <option value="RSI_Divergence_Scalp">⚡ RSI Divergence Exhaustion Scalp</option>
                                 <option value="Bollinger_Bands">⚡ Bollinger Bands Mean Rev Scalp</option>
                                 <option value="MACD_ZeroCross_Scalp">⚡ Fast MACD Zero-Line Scalp</option>
@@ -1562,10 +1561,6 @@
                 "5m": { vol_mult: 1.5, vol_period: 20, body_mult: 1.2, sl: 1.0, tp: 2.0, mtf: false, chop: false },
                 "15m": { vol_mult: 1.5, vol_period: 20, body_mult: 1.2, sl: 1.5, tp: 3.0, mtf: false, chop: false }
             },
-            "VWAP_Micro_Reversal": {
-                "5m": { num_std: 2.5, rsi_period: 14, adx_max: 30.0, sl: 1.0, tp: 2.0, mtf: false, chop: true },
-                "15m": { num_std: 2.5, rsi_period: 14, adx_max: 30.0, sl: 1.5, tp: 3.0, mtf: false, chop: true }
-            },
             "RSI_Divergence_Scalp": {
                 "5m": { lookback: 20, rsi_period: 14, ema_trend: 50, sl: 1.2, tp: 2.5, mtf: true, chop: true },
                 "15m": { lookback: 25, rsi_period: 14, ema_trend: 50, sl: 1.5, tp: 3.0, mtf: true, chop: true }
@@ -1712,24 +1707,6 @@
                     <div>
                         <label for="param_body_mult">Body Engulf Multiplier</label>
                         <input type="number" id="param_body_mult" value="${valBodyMult}" step="0.1">
-                    </div>
-                `;
-            } else if (strategy === 'VWAP_Micro_Reversal') {
-                const valStd = sDefaults ? sDefaults.num_std : 2.5;
-                const valRsi = sDefaults ? sDefaults.rsi_period : 14;
-                const valAdx = sDefaults ? sDefaults.adx_max : 30.0;
-                container.innerHTML = `
-                    <div>
-                        <label for="param_num_std">VWAP Std Deviations</label>
-                        <input type="number" id="param_num_std" value="${valStd}" step="0.1">
-                    </div>
-                    <div>
-                        <label for="param_rsi_period">RSI Filter Period</label>
-                        <input type="number" id="param_rsi_period" value="${valRsi}">
-                    </div>
-                    <div>
-                        <label for="param_adx_max">Max ADX (Trend Guard)</label>
-                        <input type="number" id="param_adx_max" value="${valAdx}" step="1">
                     </div>
                 `;
             } else if (strategy === 'RSI_Divergence_Scalp') {

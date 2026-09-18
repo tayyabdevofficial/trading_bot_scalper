@@ -54,15 +54,6 @@ STRATEGY_TEMPLATES = [
         "params": {"period": 20, "num_std": 2.0, "rsi_period": 14, "max_adx": 28.0}
     },
     {
-        "name": "VWAP_Micro_Reversal",
-        "strategy_type": "REVERSION",
-        "use_chop_filter": True,
-        "use_mtf_filter": False,
-        "tp_5m": 1.5,
-        "tp_15m": 2.0,
-        "params": {"num_std": 2.5, "rsi_period": 14, "adx_max": 30.0}
-    },
-    {
         "name": "Engulfing_Volume_Scalp",
         "strategy_type": "TREND",
         "use_chop_filter": False,
