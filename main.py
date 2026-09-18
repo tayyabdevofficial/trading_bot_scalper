@@ -42,7 +42,7 @@ class TradingBot:
             risk_percent=float(parameters.get("risk_percent", 2.0)),
             stop_loss_pct=float(parameters.get("stop_loss_pct", 1.0)),
             take_profit_pct=float(parameters.get("take_profit_pct", 2.0)),
-            leverage=int(parameters.get("leverage", 5)),
+            leverage=int(parameters.get("leverage", 20)),
             trade_amount_usd=float(parameters.get("trade_amount_usd")) if parameters.get("trade_amount_usd") is not None else None
         )
         

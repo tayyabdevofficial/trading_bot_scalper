@@ -277,7 +277,88 @@
             border: 1px solid rgba(255, 255, 255, 0.05);
             border-radius: 8px;
             padding: 1rem;
-            margin-bottom: 0.75rem;
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--glass-border);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .pagination-info {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .btn-page-nav {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            padding: 0.35rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .btn-page-nav:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-page-nav:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .btn-page-nav.active {
+            background: var(--accent-purple);
+            border-color: var(--accent-purple);
+            color: #fff;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 1.1rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .stat-card .stat-val {
+            font-size: 1.4rem;
+            font-weight: 700;
+            font-family: 'Outfit', sans-serif;
         }
     </style>
 </head>
@@ -286,31 +367,52 @@
     <div class="container">
         <!-- WIDGET: header.html -->
 
+        <!-- Summary Performance Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-label">Total Realized PnL</span>
+                <span class="stat-val" id="statNetPnl" style="color: var(--accent-green);">$0.00</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Win Rate</span>
+                <span class="stat-val" id="statWinRate" style="color: var(--accent-blue);">0.0%</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Total Closed Trades</span>
+                <span class="stat-val" id="statTotalTrades" style="color: #f8fafc;">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Profit Trades</span>
+                <span class="stat-val" id="statProfitTrades" style="color: var(--accent-green);">0 (+$0.00)</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Loss Trades</span>
+                <span class="stat-val" id="statLossTrades" style="color: var(--accent-red);">0 (-$0.00)</span>
+            </div>
+        </div>
 
         <!-- Filters Card -->
         <div class="glass-card" style="margin-bottom: 1.5rem; padding: 1.2rem 1.5rem;">
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; align-items: flex-end;">
                 <div>
                     <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.4rem;" for="filterNetwork">Filter by Network</label>
-                    <select id="filterNetwork" onchange="filterClosedPositions()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
+                    <select id="filterNetwork" onchange="onFilterChange()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
                         <option value="all">All Networks</option>
-                        <option value="mainnet">Mainnet (Live)</option>
-                        <option value="testnet">Testnet (Simulation)</option>
+                        <option value="mainnet">🟢 Mainnet (Live)</option>
+                        <option value="testnet">🔵 Testnet (Simulation)</option>
                     </select>
                 </div>
                 <div>
                     <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.4rem;" for="filterBot">Filter by Bot Instance</label>
-                    <select id="filterBot" onchange="filterClosedPositions()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
-                        <option value="all">All Bots Combined</option>
-                    </select>
+                    <input type="text" id="filterBot" placeholder="Bot #ID (e.g. 101)" oninput="onSymbolFilterInput()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
                 </div>
                 <div>
                     <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.4rem;" for="filterSymbol">Filter by Symbol</label>
-                    <input type="text" id="filterSymbol" placeholder="e.g. BTCUSDT" oninput="filterClosedPositions()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
+                    <input type="text" id="filterSymbol" placeholder="e.g. BTCUSDT" oninput="onSymbolFilterInput()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
                 </div>
                 <div>
                     <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.4rem;" for="filterStatus">Filter by Status</label>
-                    <select id="filterStatus" onchange="filterClosedPositions()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
+                    <select id="filterStatus" onchange="onFilterChange()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
                         <option value="all">All Statuses</option>
                         <option value="TP_HIT">Take Profit Hit (Profit)</option>
                         <option value="SL_HIT">Stop Loss Hit (Loss)</option>
@@ -320,7 +422,7 @@
                 </div>
                 <div>
                     <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.4rem;" for="filterPnl">Filter by PnL</label>
-                    <select id="filterPnl" onchange="filterClosedPositions()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
+                    <select id="filterPnl" onchange="onFilterChange()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
                         <option value="all">All Positions</option>
                         <option value="profit">Profit Only</option>
                         <option value="loss">Loss Only</option>
@@ -328,7 +430,7 @@
                 </div>
                 <div>
                     <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.4rem;" for="filterTps">Filter by TP Hits</label>
-                    <select id="filterTps" onchange="filterClosedPositions()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
+                    <select id="filterTps" onchange="onFilterChange()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
                         <option value="all">All Hits</option>
                         <option value="stop_loss">Hit Stop Loss</option>
                         <option value="0">0 TPs Hit</option>
@@ -340,6 +442,11 @@
                         <option value="6">6 TPs Hit</option>
                     </select>
                 </div>
+                <div>
+                    <button onclick="resetClosedFilters()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-muted); font-family: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                        Reset Filters
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -350,7 +457,7 @@
                     <thead>
                         <tr>
                             <th>Network</th>
-                            <th>Open / Close Time</th>
+                            <th>Open / Close Time (PKT)</th>
                             <th>Order ID</th>
                             <th>Bot ID</th>
                             <th>Symbol</th>
@@ -366,10 +473,22 @@
                     </thead>
                     <tbody id="closedPositionsBody">
                         <tr>
-                            <td colspan="13" class="no-positions">Loading closed positions hi story...</td>
+                            <td colspan="13" class="no-positions">Loading closed positions history...</td>
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Pagination Controls -->
+            <div class="pagination-container" id="closedPaginationControls" style="display: none;">
+                <div class="pagination-info" id="closedPaginationInfo">Showing 0-0 of 0 trades</div>
+                <div class="pagination-controls">
+                    <button class="btn-page-nav" id="btnClosedFirst" onclick="goToTradePage(1)" title="First Page">&laquo;</button>
+                    <button class="btn-page-nav" id="btnClosedPrev" onclick="changeTradePage(-1)" title="Previous Page">&lsaquo;</button>
+                    <div id="closedPageNumbers" style="display: flex; gap: 0.35rem;"></div>
+                    <button class="btn-page-nav" id="btnClosedNext" onclick="changeTradePage(1)" title="Next Page">&rsaquo;</button>
+                    <button class="btn-page-nav" id="btnClosedLast" onclick="goToTradeLastPage()" title="Last Page">&raquo;</button>
+                </div>
             </div>
         </div>
     </div>
@@ -380,126 +499,140 @@
     <script>
         const apiBase = '/api';
 
-
         lucide.createIcons();
 
         let allPositions = [];
         let loadedBots = [];
         let activeFilteredTrades = [];
+        let tradePage = 1;
+        let totalTradeCount = 0;
+        let totalTradePages = 1;
+        const TRADE_PAGE_SIZE = 20;
+        let tradeSearchTimeout = null;
 
         function formatPrice(val) {
             if (val === undefined || val === null || isNaN(val) || Number(val) === 0) return '—';
-            // strip trailing zeros by converting to float after fixing precision to 10 decimals
             return parseFloat(Number(val).toFixed(10)).toString();
         }
 
+        function onFilterChange() {
+            tradePage = 1;
+            fetchClosedPositions();
+        }
 
-        // Fetch bots list once to populate dropdown
-        async function fetchBots() {
-            try {
-                const resp = await fetch(apiBase + '/bots');
-                const bots = await resp.json();
-                loadedBots = bots;
-                
-                const select = document.getElementById('filterBot');
-                const prevVal = select.value;
-                
-                let optionsHtml = '<option value="all">All Bots Combined</option>';
-                const addedIds = new Set();
-                
-                bots.forEach(b => {
-                    if (!addedIds.has(b.id)) {
-                        optionsHtml += `<option value="${b.id}">Bot ID #${b.id} (${b.symbol} - ${b.strategy_name})</option>`;
-                        addedIds.add(b.id);
-                    }
-                });
-                
-                allPositions.forEach(p => {
-                    if (!addedIds.has(p.bot_id)) {
-                        const botName = p.strategy_name ? `(${p.strategy_name})` : '(Deleted Bot)';
-                        optionsHtml += `<option value="${p.bot_id}">Bot ID #${p.bot_id} ${botName}</option>`;
-                        addedIds.add(p.bot_id);
-                    }
-                });
-                
-                select.innerHTML = optionsHtml;
-                select.value = prevVal;
-                if (!select.value) select.value = 'all';
-            } catch (e) {
-                console.error("Error fetching bots list", e);
-            }
+        function onSymbolFilterInput() {
+            clearTimeout(tradeSearchTimeout);
+            tradeSearchTimeout = setTimeout(() => {
+                tradePage = 1;
+                fetchClosedPositions();
+            }, 300);
+        }
+
+        function resetClosedFilters() {
+            const net = document.getElementById('filterNetwork');
+            const bot = document.getElementById('filterBot');
+            const sym = document.getElementById('filterSymbol');
+            const st = document.getElementById('filterStatus');
+            const pnl = document.getElementById('filterPnl');
+            const tps = document.getElementById('filterTps');
+            if (net) net.value = 'all';
+            if (bot) bot.value = '';
+            if (sym) sym.value = '';
+            if (st) st.value = 'all';
+            if (pnl) pnl.value = 'all';
+            if (tps) tps.value = 'all';
+            tradePage = 1;
+            fetchClosedPositions();
         }
 
         async function fetchClosedPositions() {
             try {
-                const response = await fetch(apiBase + '/closed-positions');
-                allPositions = await response.json();
-                await fetchBots();
-                filterClosedPositions();
+                const filterNetwork = document.getElementById('filterNetwork')?.value || 'all';
+                const filterBot = (document.getElementById('filterBot')?.value || '').trim();
+                const filterSymbol = (document.getElementById('filterSymbol')?.value || '').trim();
+                const filterStatus = document.getElementById('filterStatus')?.value || 'all';
+                const filterPnl = document.getElementById('filterPnl')?.value || 'all';
+                const filterTps = document.getElementById('filterTps')?.value || 'all';
+
+                const params = new URLSearchParams({
+                    page: tradePage,
+                    page_size: TRADE_PAGE_SIZE,
+                    network: filterNetwork,
+                    status: filterStatus,
+                    pnl: filterPnl,
+                    tps_hit: filterTps
+                });
+                if (filterBot && filterBot.toLowerCase() !== 'all') {
+                    params.append('bot_id', filterBot.replace('#', ''));
+                }
+                if (filterSymbol) {
+                    params.append('symbol', filterSymbol);
+                }
+
+                const response = await fetch(apiBase + '/closed-positions?' + params.toString());
+                if (!response.ok) return;
+                const data = await response.json();
+
+                allPositions = data.items || [];
+                activeFilteredTrades = data.items || [];
+                totalTradeCount = data.total || 0;
+                totalTradePages = data.total_pages || 1;
+                tradePage = data.page || 1;
+
+                // Update stats from backend aggregation
+                const stats = data.stats || {};
+                const totalPnl = Number(stats.total_pnl) || 0.0;
+                const profitCount = stats.profit_count || 0;
+                const profitSum = Number(stats.profit_sum) || 0.0;
+                const lossCount = stats.loss_count || 0;
+                const lossSum = Number(stats.loss_sum) || 0.0;
+                const winRate = (Number(stats.win_rate) || 0.0).toFixed(1);
+                const totalTrades = stats.total_trades !== undefined ? stats.total_trades : totalTradeCount;
+
+                const statNetPnl = document.getElementById('statNetPnl');
+                const statWinRate = document.getElementById('statWinRate');
+                const statTotalTrades = document.getElementById('statTotalTrades');
+                const statProfitTrades = document.getElementById('statProfitTrades');
+                const statLossTrades = document.getElementById('statLossTrades');
+
+                if (statNetPnl) {
+                    const sign = totalPnl >= 0 ? '+' : '';
+                    statNetPnl.textContent = `${sign}$${totalPnl.toFixed(2)}`;
+                    statNetPnl.style.color = totalPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                }
+                if (statWinRate) statWinRate.textContent = `${winRate}%`;
+                if (statTotalTrades) statTotalTrades.textContent = totalTrades.toLocaleString();
+                if (statProfitTrades) statProfitTrades.textContent = `${profitCount} (+$${profitSum.toFixed(2)})`;
+                if (statLossTrades) statLossTrades.textContent = `${lossCount} (-$${lossSum.toFixed(2)})`;
+
+                renderClosedPositions();
             } catch (e) {
                 console.error("Error fetching closed positions", e);
             }
         }
 
-        function filterClosedPositions() {
-            const filterNetwork = document.getElementById('filterNetwork')?.value || 'all';
-            const filterBot = document.getElementById('filterBot').value;
-            const filterSymbol = document.getElementById('filterSymbol').value.toUpperCase().trim();
-            const filterStatus = document.getElementById('filterStatus')?.value || 'all';
-            const filterPnl = document.getElementById('filterPnl').value;
-            const filterTps = document.getElementById('filterTps').value;
+        function renderClosedPositions() {
             const tbody = document.getElementById('closedPositionsBody');
+            const paginationControls = document.getElementById('closedPaginationControls');
 
-            const filtered = allPositions.filter(t => {
-                const net = (t.network || 'mainnet').toLowerCase();
-                if (filterNetwork !== 'all' && net !== filterNetwork.toLowerCase()) {
-                    return false;
-                }
-                if (filterBot !== 'all' && String(t.bot_id) !== filterBot) {
-                    return false;
-                }
-                if (filterSymbol && !t.symbol.toUpperCase().includes(filterSymbol)) {
-                    return false;
-                }
-                if (filterStatus !== 'all') {
-                    const st = (t.status || t.type || '').toUpperCase();
-                    if (filterStatus === 'TP_HIT' && !st.includes('TP')) return false;
-                    if (filterStatus === 'SL_HIT' && !st.includes('SL') && !st.includes('STOP_LOSS')) return false;
-                    if (filterStatus === 'OPPOSITE_SIGNAL_CLOSED' && !st.includes('OPPOSITE')) return false;
-                    if (filterStatus === 'CLOSED' && (st.includes('TP') || st.includes('SL') || st.includes('STOP_LOSS') || st.includes('OPPOSITE'))) return false;
-                }
-                if (filterPnl === 'profit' && t.realized_pnl <= 0) {
-                    return false;
-                }
-                if (filterPnl === 'loss' && t.realized_pnl >= 0) {
-                    return false;
-                }
-                if (filterTps !== 'all') {
-                    if (filterTps === 'stop_loss') {
-                        if (t.type !== 'STOP_LOSS' && t.status !== 'SL_HIT') {
-                            return false;
-                        }
-                    } else {
-                        if (String(t.tps_hit) !== filterTps) {
-                            return false;
-                        }
-                    }
-                }
-                return true;
-            });
-
-             activeFilteredTrades = filtered;
-
-            if (filtered.length === 0) {
+            if (totalTradeCount === 0 || allPositions.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="13" class="no-positions">No closed positions matching the filters.</td>
+                        <td colspan="13" class="no-positions">No closed positions matching the current filters.</td>
                     </tr>
                 `;
+                if (paginationControls) paginationControls.style.display = 'none';
                 return;
             }
 
-            tbody.innerHTML = filtered.map((t, idx) => {
+            if (paginationControls) paginationControls.style.display = 'flex';
+
+            const startIndex = (tradePage - 1) * TRADE_PAGE_SIZE;
+            const endIndex = Math.min(startIndex + allPositions.length, totalTradeCount);
+            const pageTrades = allPositions;
+
+            tbody.innerHTML = pageTrades.map((t, idx) => {
+                const originalIndex = idx;
                 let displaySide = t.side || 'LONG';
                 if (displaySide === 'BUY') displaySide = 'LONG';
                 if (displaySide === 'SELL') displaySide = 'SHORT';
@@ -543,7 +676,7 @@
 
                 let tpDisplay = `<span style="color: var(--accent-green);">${tpsHit}/${tpsTotal} hit</span>`;
                 if (t.tp_targets && t.tp_targets.length > 0) {
-                    tpDisplay = `<span style="color: var(--accent-green); cursor: pointer; text-decoration: underline;" onclick="showClosedTpModal(${idx})">${tpsHit}/${tpsTotal} hit</span>`;
+                    tpDisplay = `<span style="color: var(--accent-green); cursor: pointer; text-decoration: underline;" onclick="showClosedTpModal(${originalIndex})">${tpsHit}/${tpsTotal} hit</span>`;
                 }
 
                 const exitReasonText = t.status || t.exit_reason || t.type || 'CLOSED';
@@ -569,6 +702,68 @@
                     </tr>
                 `;
             }).join('');
+
+            renderClosedPagination(totalTradeCount, totalTradePages, startIndex, endIndex);
+        }
+
+        function renderClosedPagination(totalTrades, totalPages, startIndex, endIndex) {
+            const info = document.getElementById('closedPaginationInfo');
+            if (info) {
+                if (totalTrades === 0) {
+                    info.textContent = 'Showing 0-0 of 0 trades';
+                } else {
+                    info.textContent = `Showing ${startIndex + 1}-${endIndex} of ${totalTrades.toLocaleString()} trades (Page ${tradePage} of ${totalPages})`;
+                }
+            }
+
+            const btnFirst = document.getElementById('btnClosedFirst');
+            const btnPrev = document.getElementById('btnClosedPrev');
+            const btnNext = document.getElementById('btnClosedNext');
+            const btnLast = document.getElementById('btnClosedLast');
+
+            if (btnFirst) btnFirst.disabled = tradePage <= 1;
+            if (btnPrev) btnPrev.disabled = tradePage <= 1;
+            if (btnNext) btnNext.disabled = tradePage >= totalPages;
+            if (btnLast) btnLast.disabled = tradePage >= totalPages;
+
+            const pageNumbersDiv = document.getElementById('closedPageNumbers');
+            if (!pageNumbersDiv) return;
+
+            let html = '';
+            const maxVisibleButtons = 5;
+            let startPage = Math.max(1, tradePage - 2);
+            let endPage = Math.min(totalPages, startPage + maxVisibleButtons - 1);
+
+            if (endPage - startPage + 1 < maxVisibleButtons) {
+                startPage = Math.max(1, endPage - maxVisibleButtons + 1);
+            }
+
+            for (let p = startPage; p <= endPage; p++) {
+                const activeClass = p === tradePage ? 'active' : '';
+                html += `<button class="btn-page-nav ${activeClass}" onclick="goToTradePage(${p})">${p}</button>`;
+            }
+
+            pageNumbersDiv.innerHTML = html;
+        }
+
+        function changeTradePage(delta) {
+            const newPage = tradePage + delta;
+            if (newPage >= 1 && newPage <= totalTradePages) {
+                tradePage = newPage;
+                fetchClosedPositions();
+            }
+        }
+
+        function goToTradePage(p) {
+            if (p >= 1 && p <= totalTradePages) {
+                tradePage = p;
+                fetchClosedPositions();
+            }
+        }
+
+        function goToTradeLastPage() {
+            tradePage = totalTradePages;
+            fetchClosedPositions();
         }
 
         async function showBotDetailsById(id) {
@@ -829,9 +1024,13 @@
             document.getElementById('tpTargetsModal').style.display = 'none';
         }
 
-        // Auto refresh every 3 seconds
+        // Auto refresh (6s interval, paused if tab hidden)
         fetchClosedPositions();
-        setInterval(fetchClosedPositions, 3000);
+        setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                fetchClosedPositions();
+            }
+        }, 6000);
     </script>
 
 </body>

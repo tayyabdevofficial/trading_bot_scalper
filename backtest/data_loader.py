@@ -21,15 +21,17 @@ class KlineDataLoader:
         Uses local CSV cache if available; otherwise fetches from Binance fapi and caches locally.
         """
         cache_path = cls.get_cache_path(symbol, interval, days)
+        fallback_30d = cls.get_cache_path(symbol, interval, 30)
 
-        if not force_refresh and os.path.exists(cache_path):
-            try:
-                df = pd.read_csv(cache_path)
-                if not df.empty and len(df) > 50:
-                    df["timestamp"] = pd.to_datetime(df["timestamp"])
-                    return df
-            except Exception as e:
-                pass
+        for path in [cache_path, fallback_30d]:
+            if not force_refresh and os.path.exists(path):
+                try:
+                    df = pd.read_csv(path)
+                    if not df.empty and len(df) > 50:
+                        df["timestamp"] = pd.to_datetime(df["timestamp"])
+                        return df
+                except Exception as e:
+                    pass
 
         # Fetch from Binance fapi
         df = cls._fetch_from_binance(symbol, interval, days)

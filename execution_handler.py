@@ -309,7 +309,7 @@ class ExecutionHandler:
             pos_val = self.db.get_state(f"active_position_bot_{b['id']}")
             if pos_val:
                 positions = pos_val if isinstance(pos_val, list) else [pos_val]
-                leverage = int(b["parameters"].get("leverage", 5))
+                leverage = int(b["parameters"].get("leverage", 20))
                 for pos in positions:
                     position_value = pos["entry_price"] * pos["qty"]
                     margin = position_value / leverage

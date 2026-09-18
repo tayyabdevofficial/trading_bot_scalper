@@ -256,15 +256,16 @@ def _enrich_bots_list(target_bots, target_mgr, target_db, default_network="mainn
     enriched_bots = []
     shared_balance = float(target_db.get_state("virtual_balance", 500.0))
     total_margin = 0.0
-    for bot in target_bots:
-        pos_val = target_db.get_state(f"active_position_bot_{bot['id']}")
-        if pos_val:
-            positions = pos_val if isinstance(pos_val, list) else [pos_val]
-            leverage = int(bot["parameters"].get("leverage", 5))
-            for pos in positions:
-                position_value = pos["entry_price"] * pos["qty"]
-                margin = position_value / leverage
-                total_margin += margin
+    
+    if target_mgr and target_mgr.active_bots:
+        for b_id, act_b in target_mgr.active_bots.items():
+            pos_val = getattr(act_b.execution, "active_position", None)
+            if pos_val:
+                positions = pos_val if isinstance(pos_val, list) else [pos_val]
+                leverage = int(getattr(act_b, "parameters", {}).get("leverage", 20))
+                for pos in positions:
+                    position_value = pos["entry_price"] * pos["qty"]
+                    total_margin += (position_value / leverage)
             
     available_balance = max(0.0, shared_balance - total_margin)
     
@@ -312,13 +313,196 @@ def _enrich_bots_list(target_bots, target_mgr, target_db, default_network="mainn
     return enriched_bots
 
 @app.get("/api/bots")
-async def get_bots(network: Optional[str] = None):
+async def get_bots(
+    network: Optional[str] = None,
+    strategy: Optional[str] = None,
+    symbol: Optional[str] = None,
+    timeframe: Optional[str] = None,
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    sort_by: Optional[str] = "id_asc",
+    page: Optional[int] = None,
+    page_size: int = 20,
+    all_bots: bool = False
+):
+    net = None if network in ("all", None) else network.lower()
+    is_run = None
+    if status == "running":
+        is_run = True
+    elif status == "stopped":
+        is_run = False
+
+    if page is not None and not all_bots:
+        p = max(1, page)
+        offset = (p - 1) * page_size
+        bots_raw, total = db.get_bots_paginated(
+            network=net,
+            strategy=strategy,
+            symbol=symbol,
+            timeframe=timeframe,
+            is_running=is_run,
+            search=search,
+            sort_by=sort_by or "id_asc",
+            limit=page_size,
+            offset=offset
+        )
+        enriched = _enrich_bots_list(bots_raw, manager, db, default_network="mainnet")
+        total_pages = max(1, (total + page_size - 1) // page_size) if total > 0 else 1
+        return {
+            "items": enriched,
+            "total": total,
+            "page": p,
+            "page_size": page_size,
+            "total_pages": total_pages
+        }
+
+    # Backward compatibility fallback
+    bots = db.get_bots(network=net)
+    return _enrich_bots_list(bots, manager, db, default_network="mainnet")
+
+@app.get("/api/bots/performance")
+async def get_bots_performance_api(
+    page: int = 1,
+    page_size: int = 20,
+    network: Optional[str] = None,
+    strategy: Optional[str] = None,
+    symbol: Optional[str] = None,
+    timeframe: Optional[str] = None,
+    status: Optional[str] = None,
+    search: Optional[str] = None,
+    sort_by: str = "pnl_desc"
+):
+    net = None if network in ("all", None) else network.lower()
+    is_run = None
+    if status == "running":
+        is_run = True
+    elif status == "stopped":
+        is_run = False
+
+    p = max(1, page)
+    offset = (p - 1) * page_size
+    bots, total = db.get_bot_performance_paginated(
+        network=net,
+        strategy=strategy,
+        symbol=symbol,
+        timeframe=timeframe,
+        is_running=is_run,
+        search=search,
+        sort_by=sort_by,
+        limit=page_size,
+        offset=offset
+    )
+    total_pages = max(1, (total + page_size - 1) // page_size) if total > 0 else 1
+    return {
+        "items": bots,
+        "total": total,
+        "page": p,
+        "page_size": page_size,
+        "total_pages": total_pages
+    }
+
+@app.get("/api/positions")
+async def get_positions_api(
+    page: Optional[int] = None,
+    page_size: int = 20,
+    network: Optional[str] = None,
+    side: Optional[str] = None,
+    search: Optional[str] = None,
+    all_items: bool = False
+):
     net = (network or "all").lower()
-    if net in ("mainnet", "testnet"):
-        all_bots = db.get_bots(network=net)
-    else:
-        all_bots = db.get_bots()
-    return _enrich_bots_list(all_bots, manager, db)
+    all_open_positions = []
+    
+    # 1. Collect positions from active running bots in manager
+    if manager and manager.active_bots:
+        for bot_id, active_bot in manager.active_bots.items():
+            b_net = getattr(active_bot, "network", "mainnet").lower()
+            if net not in ("all", None) and b_net != net:
+                continue
+            pos = getattr(active_bot.execution, "active_position", None)
+            if pos:
+                positions = pos if isinstance(pos, list) else [pos]
+                latest_price = 0.0
+                if active_bot.data_engine.klines:
+                    latest_price = active_bot.data_engine.klines[-1]["close"]
+                bot_info = {
+                    "id": bot_id,
+                    "symbol": active_bot.symbol,
+                    "strategy_name": active_bot.strategy_name,
+                    "network": b_net,
+                    "parameters": getattr(active_bot, "parameters", {}),
+                    "latest_price": latest_price,
+                    "is_running": True
+                }
+                for p in positions:
+                    all_open_positions.append({"bot": bot_info, "pos": p})
+
+    # 2. Also check DB active position states for bots not currently in memory
+    saved_positions_map = db.get_all_active_positions_from_state()
+    missing_bot_ids = [bid for bid in saved_positions_map if not (manager and bid in manager.active_bots)]
+    if missing_bot_ids:
+        with db.get_connection() as conn:
+            cursor = conn.cursor()
+            placeholders = ",".join("?" for _ in missing_bot_ids)
+            cursor.execute(f"SELECT * FROM bot_instances WHERE id IN ({placeholders})", missing_bot_ids)
+            for row in cursor.fetchall():
+                b = dict(row)
+                b_net = b.get("network", "mainnet").lower()
+                if net not in ("all", None) and b_net != net:
+                    continue
+                try:
+                    params = json.loads(b["parameters"])
+                except Exception:
+                    params = {}
+                bot_info = {
+                    "id": b["id"],
+                    "symbol": b["symbol"],
+                    "strategy_name": b["strategy_name"],
+                    "network": b.get("network", "mainnet"),
+                    "parameters": params,
+                    "latest_price": 0.0,
+                    "is_running": False
+                }
+                positions = saved_positions_map.get(b["id"], [])
+                for p in positions:
+                    all_open_positions.append({"bot": bot_info, "pos": p})
+
+    # Filter side & search
+    filtered = []
+    for item in all_open_positions:
+        b = item["bot"]
+        p = item["pos"]
+        if side and side != "all" and (p.get("side") or "").upper() != side.upper():
+            continue
+        if search and search.strip():
+            q = search.strip().lower()
+            sym_match = q in (b.get("symbol") or "").lower()
+            id_match = q in str(b.get("id"))
+            strat_match = q in (b.get("strategy_name") or "").lower()
+            if not (sym_match or id_match or strat_match):
+                continue
+        filtered.append(item)
+
+    # Sort by timestamp desc
+    filtered.sort(key=lambda x: str(x["pos"].get("timestamp") or ""), reverse=True)
+
+    if all_items or page is None:
+        return filtered
+
+    total = len(filtered)
+    total_pages = max(1, (total + page_size - 1) // page_size) if total > 0 else 1
+    p = max(1, page)
+    start_idx = (p - 1) * page_size
+    end_idx = start_idx + page_size
+    page_items = filtered[start_idx:end_idx]
+
+    return {
+        "items": page_items,
+        "total": total,
+        "page": p,
+        "page_size": page_size,
+        "total_pages": total_pages
+    }
 
 @app.post("/api/bots")
 async def create_bot(req: BotCreateRequest):
@@ -348,6 +532,28 @@ async def create_bot(req: BotCreateRequest):
         network=network
     )
     return {"status": "success", "bot_id": bot_id, "network": network}
+
+class DeployBacktestRequest(BaseModel):
+    network: str = "testnet"
+    top_n: Optional[int] = None
+    from_backtest_only: bool = True
+
+@app.post("/api/bots/deploy-backtest")
+async def deploy_backtest_bots_api(req: DeployBacktestRequest, request: Request = None):
+    from scripts.deploy_bots import deploy_bots
+    net = (req.network or "testnet").lower()
+    created, updated = deploy_bots(
+        network=net,
+        from_backtest_only=req.from_backtest_only,
+        top_n=req.top_n
+    )
+    return {
+        "status": "success",
+        "message": f"Successfully deployed backtest configurations to {net.upper()}: {created} created, {updated} updated.",
+        "created": created,
+        "updated": updated,
+        "network": net
+    }
 
 @app.delete("/api/bots/{bot_id}")
 async def delete_bot(bot_id: int):
@@ -481,7 +687,7 @@ async def get_wallet_balance():
         pos_val = db.get_state(f"active_position_bot_{bot['id']}")
         if pos_val:
             positions = pos_val if isinstance(pos_val, list) else [pos_val]
-            leverage = int(bot["parameters"].get("leverage", 5))
+            leverage = int(bot["parameters"].get("leverage", 20))
             for pos in positions:
                 position_value = pos["entry_price"] * pos["qty"]
                 margin = position_value / leverage
@@ -597,7 +803,7 @@ def group_trades_into_positions(raw_trades):
                     "tps_hit": 1 if "PARTIAL_TP" in trade_type else 0,
                     "tps_total": 1,
                     "tp_targets": [],
-                    "leverage": 5
+                    "leverage": 20
                 })
                 continue
                 
@@ -631,12 +837,12 @@ def group_trades_into_positions(raw_trades):
                 total_pnl = sum(xt["realized_pnl"] for xt in exit_trades)
                 
                 take_profit_pct = 2.0
-                leverage = 5
+                leverage = 20
                 if cycle["bot_params"]:
                     try:
                         params = json.loads(cycle["bot_params"])
                         take_profit_pct = float(params.get("take_profit_pct", 2.0))
-                        leverage = int(params.get("leverage", 5))
+                        leverage = int(params.get("leverage", 20))
                     except:
                         pass
                 
@@ -797,8 +1003,107 @@ def _get_closed_positions_unified(bot_id=None, network_filter=None):
     return all_positions
 
 @app.get("/api/closed-positions")
-async def get_closed_positions(request: Request = None, bot_id: Optional[int] = None, network: Optional[str] = None):
-    return _get_closed_positions_unified(bot_id=bot_id, network_filter=network)
+async def get_closed_positions(
+    request: Request = None,
+    bot_id: Optional[int] = None,
+    network: Optional[str] = None,
+    symbol: Optional[str] = None,
+    status: Optional[str] = None,
+    pnl: Optional[str] = None,
+    tps_hit: Optional[str] = None,
+    search: Optional[str] = None,
+    page: Optional[int] = None,
+    page_size: int = 20,
+    all_items: bool = False
+):
+    raw_positions = _get_closed_positions_unified(bot_id=bot_id, network_filter=network)
+
+    filtered = []
+    total_pnl = 0.0
+    profit_count = 0
+    profit_sum = 0.0
+    loss_count = 0
+    loss_sum = 0.0
+
+    for t in raw_positions:
+        net = (t.get("network") or "mainnet").lower()
+        if network and network != "all" and net != network.lower():
+            continue
+        if bot_id is not None and str(t.get("bot_id")) != str(bot_id):
+            continue
+        if symbol and symbol.strip():
+            if symbol.strip().upper() not in (t.get("symbol") or "").upper():
+                continue
+        if search and search.strip():
+            q = search.strip().lower()
+            sym_match = q in (t.get("symbol") or "").lower()
+            bot_match = q in str(t.get("bot_id"))
+            strat_match = q in (t.get("strategy_name") or "").lower()
+            if not (sym_match or bot_match or strat_match):
+                continue
+        if status and status != "all":
+            st = (t.get("status") or t.get("type") or "").upper()
+            if status == "TP_HIT" and "TP" not in st:
+                continue
+            if status == "SL_HIT" and ("SL" not in st and "STOP_LOSS" not in st):
+                continue
+            if status == "OPPOSITE_SIGNAL_CLOSED" and "OPPOSITE" not in st:
+                continue
+            if status == "CLOSED" and any(k in st for k in ("TP", "SL", "STOP_LOSS", "OPPOSITE")):
+                continue
+        rpnl = float(t.get("realized_pnl") or 0.0)
+        if pnl == "profit" and rpnl <= 0:
+            continue
+        if pnl == "loss" and rpnl >= 0:
+            continue
+        if tps_hit and tps_hit != "all":
+            if tps_hit == "stop_loss":
+                if t.get("type") != "STOP_LOSS" and t.get("status") != "SL_HIT":
+                    continue
+            else:
+                if str(t.get("tps_hit")) != str(tps_hit):
+                    continue
+
+        total_pnl += rpnl
+        if rpnl > 0:
+            profit_count += 1
+            profit_sum += rpnl
+        elif rpnl < 0:
+            loss_count += 1
+            loss_sum += abs(rpnl)
+
+        filtered.append(t)
+
+    win_rate = round((profit_count / len(filtered) * 100.0), 1) if filtered else 0.0
+
+    stats = {
+        "total_pnl": round(total_pnl, 2),
+        "win_rate": win_rate,
+        "total_trades": len(filtered),
+        "profit_count": profit_count,
+        "profit_sum": round(profit_sum, 2),
+        "loss_count": loss_count,
+        "loss_sum": round(loss_sum, 2)
+    }
+
+    if all_items or page is None:
+        return filtered
+
+    total = len(filtered)
+    total_pages = max(1, (total + page_size - 1) // page_size) if total > 0 else 1
+    p = max(1, page)
+    start_idx = (p - 1) * page_size
+    end_idx = start_idx + page_size
+    page_items = filtered[start_idx:end_idx]
+
+    return {
+        "items": page_items,
+        "total": total,
+        "page": p,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "stats": stats
+    }
 
 def calculate_rsi(df, period=14):
     if len(df) < period + 1:
@@ -890,7 +1195,7 @@ def _sync_live_bot_state(active_bot, params: dict) -> None:
     active_bot.parameters = params
 
     if hasattr(active_bot, "risk_manager") and active_bot.risk_manager:
-        active_bot.risk_manager.leverage = int(params.get("leverage", getattr(active_bot.risk_manager, "leverage", 5)))
+        active_bot.risk_manager.leverage = int(params.get("leverage", getattr(active_bot.risk_manager, "leverage", 20)))
 
         trade_amount_value = params.get("trade_amount_usd")
         if trade_amount_value is None:

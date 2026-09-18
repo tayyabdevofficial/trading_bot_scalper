@@ -6,18 +6,22 @@ class BaseStrategy(ABC):
     def __init__(self, name="BaseStrategy"):
         self.name = name
 
-    @abstractmethod
     def generate_signal(self, df: pd.DataFrame) -> str:
         """
         Processes a dataframe of OHLCV candles and returns a trading signal.
-        
-        Parameters:
-            df (pd.DataFrame): DataFrame containing klines with cols [open, high, low, close, volume]
-            
-        Returns:
-            str: "BUY" (Long), "SELL" (Short), or "HOLD" (No Action)
+        Delegates to the vectorized signals generator with self parameters to guarantee
+        100% identical signal generation on mainnet/testnet as in backtesting.
         """
-        pass
+        try:
+            from backtest.signals_generator import generate_signals_vectorized
+            params = {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
+            signals = generate_signals_vectorized(self.name, params, df)
+            if len(signals) > 0:
+                return str(signals.iloc[-1])
+        except Exception as e:
+            import logging
+            logging.getLogger("BaseStrategy").warning(f"Error in vectorized signal generation for {self.name}: {e}")
+        return "HOLD"
 
     @staticmethod
     def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:

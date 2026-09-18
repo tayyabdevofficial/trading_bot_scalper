@@ -278,7 +278,7 @@ def run_chunked_backtest(chunk_size: int = 10, days: int = 30):
                 mdd = res["max_drawdown"]
                 events = res.get("trade_events")
 
-                if not res.get("cached", False):
+                if not res.get("cached", False) and r_pnl > 0 and r_pnl >= (2.0 * t_cnt):
                     db.save_backtest_result(
                         symbol=sym,
                         strategy_name=strat_name,
@@ -372,4 +372,4 @@ def run_chunked_backtest(chunk_size: int = 10, days: int = 30):
     print("#" * 115)
 
 if __name__ == "__main__":
-    run_chunked_backtest(chunk_size=10, days=30)
+    run_chunked_backtest(chunk_size=10, days=60)

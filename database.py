@@ -247,6 +247,169 @@ class Database:
                 bots.append(d)
             return bots
 
+    def get_bots_paginated(self, network=None, strategy=None, symbol=None, timeframe=None, is_running=None, search=None,
+                           sort_by="id_asc", limit=20, offset=0):
+        query = "SELECT * FROM bot_instances WHERE 1=1"
+        count_query = "SELECT COUNT(*) FROM bot_instances WHERE 1=1"
+        params = []
+        count_params = []
+
+        if network and network != "all":
+            query += " AND network = ?"
+            count_query += " AND network = ?"
+            params.append(network.lower())
+            count_params.append(network.lower())
+        if strategy and strategy != "all":
+            query += " AND strategy_name = ?"
+            count_query += " AND strategy_name = ?"
+            params.append(strategy)
+            count_params.append(strategy)
+        if timeframe and timeframe != "all":
+            query += " AND (json_extract(parameters, '$.candle_interval') = ? OR json_extract(parameters, '$.interval') = ?)"
+            count_query += " AND (json_extract(parameters, '$.candle_interval') = ? OR json_extract(parameters, '$.interval') = ?)"
+            params.extend([timeframe, timeframe])
+            count_params.extend([timeframe, timeframe])
+        if symbol and symbol.strip():
+            query += " AND symbol LIKE ?"
+            count_query += " AND symbol LIKE ?"
+            params.append(f"%{symbol.strip().upper()}%")
+            count_params.append(f"%{symbol.strip().upper()}%")
+        if is_running is not None:
+            query += " AND is_running = ?"
+            count_query += " AND is_running = ?"
+            params.append(1 if is_running else 0)
+            count_params.append(1 if is_running else 0)
+        if search and search.strip():
+            s = f"%{search.strip()}%"
+            query += " AND (symbol LIKE ? OR strategy_name LIKE ? OR CAST(id AS TEXT) LIKE ?)"
+            count_query += " AND (symbol LIKE ? OR strategy_name LIKE ? OR CAST(id AS TEXT) LIKE ?)"
+            params.extend([s, s, s])
+            count_params.extend([s, s, s])
+
+        order_clause = "id ASC"
+        if sort_by == "id_desc":
+            order_clause = "id DESC"
+        elif sort_by == "symbol_asc":
+            order_clause = "symbol ASC"
+        elif sort_by == "symbol_desc":
+            order_clause = "symbol DESC"
+        elif sort_by == "strategy_asc":
+            order_clause = "strategy_name ASC"
+
+        query += f" ORDER BY {order_clause} LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(count_query, count_params)
+            total = cursor.fetchone()[0]
+
+            cursor.execute(query, params)
+            bots = []
+            for row in cursor.fetchall():
+                d = dict(row)
+                d["parameters"] = json.loads(d["parameters"])
+                d["is_running"] = bool(d["is_running"])
+                d["network"] = d.get("network", "mainnet")
+                bots.append(d)
+            return bots, total
+
+    def get_bot_performance_paginated(self, network=None, strategy=None, symbol=None, timeframe=None, is_running=None, search=None,
+                                      sort_by="pnl_desc", limit=20, offset=0):
+        """Query bots with aggregated PnL and trade statistics directly via SQL for ultra-fast performance."""
+        where_clauses = ["1=1"]
+        params = []
+        count_params = []
+
+        if network and network != "all":
+            where_clauses.append("b.network = ?")
+            params.append(network.lower())
+            count_params.append(network.lower())
+        if strategy and strategy != "all":
+            where_clauses.append("b.strategy_name = ?")
+            params.append(strategy)
+            count_params.append(strategy)
+        if timeframe and timeframe != "all":
+            where_clauses.append("(json_extract(b.parameters, '$.candle_interval') = ? OR json_extract(b.parameters, '$.interval') = ?)")
+            params.extend([timeframe, timeframe])
+            count_params.extend([timeframe, timeframe])
+        if symbol and symbol.strip():
+            where_clauses.append("b.symbol LIKE ?")
+            s_sym = f"%{symbol.strip().upper()}%"
+            params.append(s_sym)
+            count_params.append(s_sym)
+        if is_running is not None:
+            where_clauses.append("b.is_running = ?")
+            params.append(1 if is_running else 0)
+            count_params.append(1 if is_running else 0)
+        if search and search.strip():
+            s_search = f"%{search.strip()}%"
+            where_clauses.append("(b.symbol LIKE ? OR b.strategy_name LIKE ? OR CAST(b.id AS TEXT) LIKE ?)")
+            params.extend([s_search, s_search, s_search])
+            count_params.extend([s_search, s_search, s_search])
+
+        where_sql = " AND ".join(where_clauses)
+
+        count_sql = f"SELECT COUNT(*) FROM bot_instances b WHERE {where_sql}"
+
+        order_map = {
+            "pnl_desc": "net_pnl DESC, total_trades DESC",
+            "pnl_asc": "net_pnl ASC, total_trades ASC",
+            "winrate_desc": "win_rate DESC, net_pnl DESC",
+            "winrate_asc": "win_rate ASC, net_pnl ASC",
+            "trades_desc": "total_trades DESC, net_pnl DESC",
+            "trades_asc": "total_trades ASC, net_pnl ASC",
+            "id_asc": "b.id ASC",
+            "id_desc": "b.id DESC",
+            "symbol_asc": "b.symbol ASC"
+        }
+        order_clause = order_map.get(sort_by, "net_pnl DESC, total_trades DESC")
+
+        main_sql = f"""
+            SELECT 
+                b.id,
+                b.symbol,
+                b.strategy_name,
+                b.parameters,
+                b.is_running,
+                b.network,
+                COALESCE(SUM(o.realized_pnl), 0.0) as net_pnl,
+                COUNT(o.id) as total_trades,
+                COUNT(CASE WHEN o.realized_pnl > 0 THEN 1 END) as profit_count,
+                COALESCE(SUM(CASE WHEN o.realized_pnl > 0 THEN o.realized_pnl ELSE 0.0 END), 0.0) as profit_sum,
+                COUNT(CASE WHEN o.realized_pnl < 0 THEN 1 END) as loss_count,
+                COALESCE(SUM(CASE WHEN o.realized_pnl < 0 THEN ABS(o.realized_pnl) ELSE 0.0 END), 0.0) as loss_sum
+            FROM bot_instances b
+            LEFT JOIN orders o ON b.id = o.bot_id AND o.status IN ('TP_HIT', 'SL_HIT', 'CLOSED', 'OPPOSITE_SIGNAL_CLOSED')
+            WHERE {where_sql}
+            GROUP BY b.id
+            ORDER BY {order_clause}
+            LIMIT ? OFFSET ?
+        """
+        params.extend([limit, offset])
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(count_sql, count_params)
+            total = cursor.fetchone()[0]
+
+            cursor.execute(main_sql, params)
+            bots = []
+            for row in cursor.fetchall():
+                d = dict(row)
+                d["parameters"] = json.loads(d["parameters"])
+                d["is_running"] = bool(d["is_running"])
+                d["network"] = d.get("network", "mainnet")
+                d["net_pnl"] = round(float(d.get("net_pnl") or 0.0), 2)
+                d["profit_sum"] = round(float(d.get("profit_sum") or 0.0), 2)
+                d["loss_sum"] = round(float(d.get("loss_sum") or 0.0), 2)
+                tt = int(d.get("total_trades") or 0)
+                pc = int(d.get("profit_count") or 0)
+                d["win_rate"] = round((pc / tt * 100.0), 1) if tt > 0 else 0.0
+                bots.append(d)
+
+            return bots, total
+
     def get_bot(self, bot_id):
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -609,6 +772,25 @@ class Database:
                 ON CONFLICT(key) DO UPDATE SET value = excluded.value
             """, (key, val_str))
             conn.commit()
+
+    def get_all_active_positions_from_state(self):
+        """Returns a dict of bot_id -> list of positions for all bots having saved active positions in one fast query."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT key, value FROM bot_state WHERE key LIKE 'active_position_bot_%'")
+            res = {}
+            for row in cursor.fetchall():
+                key = row["key"]
+                bot_id_str = key.replace("active_position_bot_", "")
+                if bot_id_str.isdigit():
+                    bot_id = int(bot_id_str)
+                    try:
+                        pos = json.loads(row["value"])
+                        if pos:
+                            res[bot_id] = pos if isinstance(pos, list) else [pos]
+                    except Exception:
+                        pass
+            return res
 
     def save_backtest_result(self, symbol: str, strategy_name: str, timeframe: str, parameters: dict,
                              total_trades: int, win_trades: int, loss_trades: int, win_rate: float,

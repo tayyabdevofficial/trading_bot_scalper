@@ -178,6 +178,57 @@
             padding: 1rem;
             margin-bottom: 0.75rem;
         }
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--glass-border);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .pagination-info {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .btn-page-nav {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            padding: 0.35rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .btn-page-nav:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-page-nav:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .btn-page-nav.active {
+            background: var(--accent-purple);
+            border-color: var(--accent-purple);
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -185,7 +236,36 @@
     <div class="container">
         <!-- WIDGET: header.html -->
 
-
+        <!-- Filters Card -->
+        <div class="glass-card" style="margin-bottom: 1.25rem; padding: 1.1rem 1.4rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.85rem; align-items: flex-end;">
+                <div>
+                    <label style="display: block; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.35rem;" for="posSearchInput">Search Position / Bot</label>
+                    <input type="text" id="posSearchInput" placeholder="Symbol (e.g. BTC) or Bot #ID" oninput="onPosSearchInput()" style="width: 100%; padding: 0.55rem 0.85rem; background: rgba(15, 23, 42, 0.7); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.88rem; outline: none;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.35rem;" for="posNetworkFilter">Network</label>
+                    <select id="posNetworkFilter" onchange="onPosFilterChange()" style="width: 100%; padding: 0.55rem 0.85rem; background: rgba(15, 23, 42, 0.7); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.88rem; outline: none;">
+                        <option value="all">All Networks</option>
+                        <option value="mainnet">🟢 Mainnet (Live)</option>
+                        <option value="testnet">🔵 Testnet (Simulation)</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.35rem;" for="posSideFilter">Side</label>
+                    <select id="posSideFilter" onchange="onPosFilterChange()" style="width: 100%; padding: 0.55rem 0.85rem; background: rgba(15, 23, 42, 0.7); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.88rem; outline: none;">
+                        <option value="all">All Sides</option>
+                        <option value="BUY">🟢 Long (BUY)</option>
+                        <option value="SELL">🔴 Short (SELL)</option>
+                    </select>
+                </div>
+                <div>
+                    <button onclick="resetPosFilters()" style="width: 100%; padding: 0.55rem 0.85rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-muted); font-family: inherit; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+                        Reset Filters
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- Positions Table Card -->
         <div class="glass-card">
@@ -194,13 +274,8 @@
                     <i data-lucide="activity" style="color: var(--accent-blue); width: 20px; height: 20px;"></i>
                     <h2 style="font-size: 1.25rem; font-weight: 600; margin: 0;">Active Open Positions</h2>
                 </div>
-                <div style="display: flex; align-items: center; gap: 0.6rem;">
-                    <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Environment:</span>
-                    <select id="posNetworkFilter" onchange="fetchPositions()" style="padding: 0.35rem 0.75rem; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(15, 23, 42, 0.8); color: #f8fafc; font-size: 0.85rem; font-weight: 600; font-family: inherit;">
-                        <option value="all">All Environments</option>
-                        <option value="mainnet">🟢 Mainnet</option>
-                        <option value="testnet">🔵 Testnet</option>
-                    </select>
+                <div id="posTotalCountBadge" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; background: rgba(255,255,255,0.04); padding: 0.3rem 0.7rem; border-radius: 6px; border: 1px solid var(--glass-border);">
+                    0 positions active
                 </div>
             </div>
             <div class="table-container">
@@ -212,7 +287,7 @@
                             <th>Network</th>
                             <th>Symbol</th>
                             <th>Side</th>
-                            <th>Qty / Size ($)</th>
+                            <th>Qty / Size</th>
                             <th>Entry / Current Price</th>
                             <th>Stop Loss</th>
                             <th>Take Profit</th>
@@ -229,6 +304,18 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Pagination Controls -->
+            <div class="pagination-container" id="posPaginationControls" style="display: none;">
+                <div class="pagination-info" id="posPaginationInfo">Showing 0-0 of 0 positions</div>
+                <div class="pagination-controls">
+                    <button class="btn-page-nav" id="btnPosFirst" onclick="goToPosPage(1)" title="First Page">&laquo;</button>
+                    <button class="btn-page-nav" id="btnPosPrev" onclick="changePosPage(-1)" title="Previous Page">&lsaquo;</button>
+                    <div id="posPageNumbers" style="display: flex; gap: 0.35rem;"></div>
+                    <button class="btn-page-nav" id="btnPosNext" onclick="changePosPage(1)" title="Next Page">&rsaquo;</button>
+                    <button class="btn-page-nav" id="btnPosLast" onclick="goToPosLastPage()" title="Last Page">&raquo;</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -237,151 +324,250 @@
     <script>
         const apiBase = '/api';
 
-
         lucide.createIcons();
 
         let loadedBots = [];
+        let allOpenPositions = [];
+        let posPage = 1;
+        let totalPosCount = 0;
+        let totalPosPages = 1;
+        const POS_PAGE_SIZE = 20;
+        let posSearchTimeout = null;
 
         function formatPrice(val) {
             if (val === undefined || val === null || isNaN(val) || Number(val) === 0) return '—';
-            // strip trailing zeros by converting to float after fixing precision to 10 decimals
             return parseFloat(Number(val).toFixed(10)).toString();
         }
 
+        function onPosFilterChange() {
+            posPage = 1;
+            fetchPositions();
+        }
+
+        function onPosSearchInput() {
+            clearTimeout(posSearchTimeout);
+            posSearchTimeout = setTimeout(() => {
+                posPage = 1;
+                fetchPositions();
+            }, 300);
+        }
+
+        function resetPosFilters() {
+            const s = document.getElementById('posSearchInput');
+            const n = document.getElementById('posNetworkFilter');
+            const side = document.getElementById('posSideFilter');
+            if (s) s.value = '';
+            if (n) n.value = 'all';
+            if (side) side.value = 'all';
+            posPage = 1;
+            fetchPositions();
+        }
 
         async function fetchPositions() {
             try {
-                const response = await fetch(apiBase + '/bots');
-                const bots = await response.json();
-                loadedBots = bots;
-                
-                const allOpenPositions = [];
-                bots.forEach(b => {
-                    if (!b.position) return;
-                    const positions = Array.isArray(b.position) ? b.position : [b.position];
-                    positions.forEach(pos => {
-                        allOpenPositions.push({
-                            bot: b,
-                            pos: pos
-                        });
-                    });
-                });
-
-                const tbody = document.getElementById('positionsBody');
-
+                const query = (document.getElementById('posSearchInput')?.value || '').trim();
                 const netFilter = document.getElementById('posNetworkFilter')?.value || 'all';
-                let filteredPositions = allOpenPositions;
-                if (netFilter !== 'all') {
-                    filteredPositions = allOpenPositions.filter(({ bot: b }) => (b.network || 'mainnet').toLowerCase() === netFilter.toLowerCase());
-                }
+                const sideFilter = document.getElementById('posSideFilter')?.value || 'all';
 
-                if (filteredPositions.length === 0) {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="13" class="no-positions" style="text-align: center; padding: 2rem; color: var(--text-muted);">No open positions across any running bots currently${netFilter !== 'all' ? ' on ' + netFilter : ''}.</td>
-                        </tr>
-                    `;
-                    return;
-                }
-
-                // Sort by open time (timestamp) desc
-                filteredPositions.sort((a, b) => {
-                    const tsA = a.pos.timestamp ? new Date(a.pos.timestamp).getTime() : 0;
-                    const tsB = b.pos.timestamp ? new Date(b.pos.timestamp).getTime() : 0;
-                    return tsB - tsA;
+                const params = new URLSearchParams({
+                    page: posPage,
+                    page_size: POS_PAGE_SIZE,
+                    network: netFilter,
+                    side: sideFilter
                 });
+                if (query) {
+                    params.append('search', query);
+                }
 
-                tbody.innerHTML = filteredPositions.map(({ bot: b, pos }) => {
-                    let pnl = 0.0;
-                    if (b.latest_price > 0) {
-                        if (pos.side === 'BUY') {
-                            pnl = (b.latest_price - pos.entry_price) * pos.qty;
-                        } else {
-                            pnl = (pos.entry_price - b.latest_price) * pos.qty;
-                        }
-                    }
+                const response = await fetch(apiBase + '/positions?' + params.toString());
+                if (!response.ok) return;
+                const data = await response.json();
 
-                    const sizeWithLev = pos.entry_price * pos.qty;
-                    
-                    const isMainnet = (b.network || 'mainnet').toLowerCase() === 'mainnet';
-                    const netBadge = isMainnet
-                        ? `<span style="font-size:0.72rem;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(34,197,94,0.3);letter-spacing:0.5px;">MAINNET</span>`
-                        : `<span style="font-size:0.72rem;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);letter-spacing:0.5px;">TESTNET</span>`;
+                allOpenPositions = data.items || [];
+                totalPosCount = data.total || 0;
+                totalPosPages = data.total_pages || 1;
+                posPage = data.page || 1;
+                loadedBots = allOpenPositions.map(i => i.bot);
 
-                    const displaySide = pos.side === 'BUY' ? 'LONG' : 'SHORT';
-                    const sideClass = pos.side === 'BUY' ? 'badge-buy' : 'badge-sell';
-                    const pnlClass = pnl >= 0 ? 'pnl-text pos' : 'pnl-text neg';
-                    const formattedPnl = pnl >= 0 ? `+$${pnl.toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`;
-
-                    const releasedPnl = pos.released_pnl || 0.0;
-                    const totalPnl = pnl + releasedPnl;
-                    
-                    const releasedPnlClass = releasedPnl >= 0 ? 'pnl-text pos' : 'pnl-text neg';
-                    const formattedReleasedPnl = releasedPnl >= 0 ? `+$${releasedPnl.toFixed(2)}` : `-$${Math.abs(releasedPnl).toFixed(2)}`;
-                    
-                    const totalPnlClass = totalPnl >= 0 ? 'pnl-text pos' : 'pnl-text neg';
-                    const formattedTotalPnl = totalPnl >= 0 ? `+$${totalPnl.toFixed(2)}` : `-$${Math.abs(totalPnl).toFixed(2)}`;
-
-                    let tpDisplay = pos.tp_price ? '$' + formatPrice(pos.tp_price) : '-';
-                    if (pos.tp_targets && pos.tp_targets.length > 0) {
-                        const hitCount = pos.tp_targets.filter(t => t.hit).length;
-                        tpDisplay = `<span style="color: var(--accent-green); cursor: pointer; text-decoration: underline;" onclick="showTpTargetsModal('${b.symbol}', '${pos.side}', ${JSON.stringify(pos.tp_targets).replace(/"/g, '&quot;')})">${hitCount}/${pos.tp_targets.length} targets hit</span>`;
-                    }
-
-                    // Format timestamp to Pakistan Time (GMT+5)
-                    let openTimeDisplay = '—';
-                    if (pos.timestamp) {
-                        try {
-                            const utcDate = new Date(pos.timestamp);
-                            // Format specifically to Asia/Karachi (Pakistan Time)
-                            openTimeDisplay = utcDate.toLocaleString("en-US", { timeZone: "Asia/Karachi" });
-                        } catch (e) {
-                            openTimeDisplay = pos.timestamp;
-                        }
-                    }
-
-                    // Status Alert Badge & Retry Button
-                    let alertBadge = '<span style="color: var(--text-muted); font-size: 0.8rem;">Standard</span>';
-                    if (pos.status === 'TP_ORDERS_FAILED') {
-                        alertBadge = `
-                            <div style="display:flex; flex-direction:column; gap:0.35rem; align-items:flex-start;">
-                                <span style="background:rgba(244,63,94,0.15); color:var(--accent-red); padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:700;">⚠ TP ORDERS FAILED</span>
-                                <button onclick="retryTpOrders(${b.id}, this)" style="background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.3); border-radius:4px; padding:0.2rem 0.4rem; font-size:0.72rem; color:var(--accent-blue); font-weight:600; cursor:pointer; font-family:inherit;">Retry TP</button>
-                            </div>
-                        `;
-                    } else if (pos.status) {
-                        alertBadge = `<span style="background:rgba(245,158,11,0.15); color:var(--accent-yellow); padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:700;">${pos.status}</span>`;
-                    }
-
-                    return `
-                        <tr>
-                            <td data-label="Open Time">${openTimeDisplay}</td>
-                            <td data-label="Bot ID"><a href="/bot-info?bot_id=${b.id}" target="_blank" style="color: var(--accent-purple); font-weight: 700; text-decoration: underline;">#${b.id} (${b.strategy_name})</a></td>
-                            <td data-label="Network">${netBadge}</td>
-                            <td data-label="Symbol"><strong>${b.symbol}</strong></td>
-                            <td data-label="Side"><span class="${sideClass}">${displaySide}</span></td>
-                            <td data-label="Qty / Size">${pos.qty} units / $${sizeWithLev.toFixed(2)}</td>
-                            <td data-label="Entry / Current">$${formatPrice(pos.entry_price)} / $${b.latest_price ? formatPrice(b.latest_price) : '—'}</td>
-                            <td data-label="Stop Loss">$${pos.sl_price ? formatPrice(pos.sl_price) : '-'}</td>
-                            <td data-label="Take Profit">${tpDisplay}</td>
-                            <td data-label="Status / Alerts">${alertBadge}</td>
-                            <td data-label="Released / Unrealized PnL ($)">
-                                <span class="${releasedPnlClass}">${formattedReleasedPnl}</span> / <span class="${pnlClass}">${formattedPnl}</span>
-                            </td>
-                            <td data-label="Total PnL ($)"><span class="${totalPnlClass}">${formattedTotalPnl}</span></td>
-                            <td data-label="Action">
-                                <button class="btn-close-pos" onclick="closePosition(${b.id}, '${b.symbol}', this)" style="background: rgba(244,63,94,0.15); border: 1px solid rgba(244,63,94,0.3); border-radius: 6px; padding: 0.4rem 0.8rem; font-size: 0.85rem; color: var(--accent-red); font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit;" onmouseover="this.style.background='rgba(244,63,94,0.25)'" onmouseout="this.style.background='rgba(244,63,94,0.15)'">
-                                    Close
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
-
-
+                renderPositions();
             } catch (e) {
                 console.error("Error fetching open positions", e);
             }
+        }
+
+        function renderPositions() {
+            const tbody = document.getElementById('positionsBody');
+            const totalCountBadge = document.getElementById('posTotalCountBadge');
+            const paginationControls = document.getElementById('posPaginationControls');
+
+            if (totalCountBadge) {
+                totalCountBadge.textContent = `${totalPosCount} active position${totalPosCount === 1 ? '' : 's'}`;
+            }
+
+            if (totalPosCount === 0 || allOpenPositions.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="13" class="no-positions" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">No open positions matching the current filters.</td>
+                    </tr>
+                `;
+                if (paginationControls) paginationControls.style.display = 'none';
+                return;
+            }
+
+            if (paginationControls) paginationControls.style.display = 'flex';
+
+            const startIndex = (posPage - 1) * POS_PAGE_SIZE;
+            const endIndex = Math.min(startIndex + allOpenPositions.length, totalPosCount);
+            const pagePositions = allOpenPositions;
+
+            tbody.innerHTML = pagePositions.map(({ bot: b, pos }) => {
+                let pnl = 0.0;
+                if (b.latest_price > 0) {
+                    if (pos.side === 'BUY') {
+                        pnl = (b.latest_price - pos.entry_price) * pos.qty;
+                    } else {
+                        pnl = (pos.entry_price - b.latest_price) * pos.qty;
+                    }
+                }
+
+                const sizeWithLev = pos.entry_price * pos.qty;
+                
+                const isMainnet = (b.network || 'mainnet').toLowerCase() === 'mainnet';
+                const netBadge = isMainnet
+                    ? `<span style="font-size:0.72rem;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(34,197,94,0.3);letter-spacing:0.5px;">MAINNET</span>`
+                    : `<span style="font-size:0.72rem;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);letter-spacing:0.5px;">TESTNET</span>`;
+
+                const displaySide = pos.side === 'BUY' ? 'LONG' : 'SHORT';
+                const sideClass = pos.side === 'BUY' ? 'badge-buy' : 'badge-sell';
+                const pnlClass = pnl >= 0 ? 'pnl-text pos' : 'pnl-text neg';
+                const formattedPnl = pnl >= 0 ? `+$${pnl.toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`;
+
+                const releasedPnl = pos.released_pnl || 0.0;
+                const totalPnl = pnl + releasedPnl;
+                
+                const releasedPnlClass = releasedPnl >= 0 ? 'pnl-text pos' : 'pnl-text neg';
+                const formattedReleasedPnl = releasedPnl >= 0 ? `+$${releasedPnl.toFixed(2)}` : `-$${Math.abs(releasedPnl).toFixed(2)}`;
+                
+                const totalPnlClass = totalPnl >= 0 ? 'pnl-text pos' : 'pnl-text neg';
+                const formattedTotalPnl = totalPnl >= 0 ? `+$${totalPnl.toFixed(2)}` : `-$${Math.abs(totalPnl).toFixed(2)}`;
+
+                let tpDisplay = pos.tp_price ? '$' + formatPrice(pos.tp_price) : '-';
+                if (pos.tp_targets && pos.tp_targets.length > 0) {
+                    const hitCount = pos.tp_targets.filter(t => t.hit).length;
+                    tpDisplay = `<span style="color: var(--accent-green); cursor: pointer; text-decoration: underline;" onclick="showTpTargetsModal('${b.symbol}', '${pos.side}', ${JSON.stringify(pos.tp_targets).replace(/"/g, '&quot;')})">${hitCount}/${pos.tp_targets.length} targets hit</span>`;
+                }
+
+                // Format timestamp to Pakistan Time (GMT+5)
+                let openTimeDisplay = '—';
+                if (pos.timestamp) {
+                    try {
+                        const utcDate = new Date(pos.timestamp);
+                        openTimeDisplay = utcDate.toLocaleString("en-US", { timeZone: "Asia/Karachi" });
+                    } catch (e) {
+                        openTimeDisplay = pos.timestamp;
+                    }
+                }
+
+                // Status Alert Badge & Retry Button
+                let alertBadge = '<span style="color: var(--text-muted); font-size: 0.8rem;">Standard</span>';
+                if (pos.status === 'TP_ORDERS_FAILED') {
+                    alertBadge = `
+                        <div style="display:flex; flex-direction:column; gap:0.35rem; align-items:flex-start;">
+                            <span style="background:rgba(244,63,94,0.15); color:var(--accent-red); padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:700;">⚠ TP ORDERS FAILED</span>
+                            <button onclick="retryTpOrders(${b.id}, this)" style="background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.3); border-radius:4px; padding:0.2rem 0.4rem; font-size:0.72rem; color:var(--accent-blue); font-weight:600; cursor:pointer; font-family:inherit;">Retry TP</button>
+                        </div>
+                    `;
+                } else if (pos.status) {
+                    alertBadge = `<span style="background:rgba(245,158,11,0.15); color:var(--accent-yellow); padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:700;">${pos.status}</span>`;
+                }
+
+                return `
+                    <tr>
+                        <td data-label="Open Time">${openTimeDisplay}</td>
+                        <td data-label="Bot ID"><a href="/bot-info?bot_id=${b.id}" target="_blank" style="color: var(--accent-purple); font-weight: 700; text-decoration: underline;">#${b.id} (${b.strategy_name})</a></td>
+                        <td data-label="Network">${netBadge}</td>
+                        <td data-label="Symbol"><strong>${b.symbol}</strong></td>
+                        <td data-label="Side"><span class="${sideClass}">${displaySide}</span></td>
+                        <td data-label="Qty / Size">${pos.qty} units / $${sizeWithLev.toFixed(2)}</td>
+                        <td data-label="Entry / Current">$${formatPrice(pos.entry_price)} / $${b.latest_price ? formatPrice(b.latest_price) : '—'}</td>
+                        <td data-label="Stop Loss">$${pos.sl_price ? formatPrice(pos.sl_price) : '-'}</td>
+                        <td data-label="Take Profit">${tpDisplay}</td>
+                        <td data-label="Status / Alerts">${alertBadge}</td>
+                        <td data-label="Released / Unrealized PnL ($)">
+                            <span class="${releasedPnlClass}">${formattedReleasedPnl}</span> / <span class="${pnlClass}">${formattedPnl}</span>
+                        </td>
+                        <td data-label="Total PnL ($)"><span class="${totalPnlClass}">${formattedTotalPnl}</span></td>
+                        <td data-label="Action">
+                            <button class="btn-close-pos" onclick="closePosition(${b.id}, '${b.symbol}', this)" style="background: rgba(244,63,94,0.15); border: 1px solid rgba(244,63,94,0.3); border-radius: 6px; padding: 0.4rem 0.8rem; font-size: 0.85rem; color: var(--accent-red); font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit;" onmouseover="this.style.background='rgba(244,63,94,0.25)'" onmouseout="this.style.background='rgba(244,63,94,0.15)'">
+                                Close
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            renderPosPagination(totalPosCount, totalPosPages, startIndex, endIndex);
+        }
+
+        function renderPosPagination(totalPositions, totalPages, startIndex, endIndex) {
+            const info = document.getElementById('posPaginationInfo');
+            if (info) {
+                if (totalPositions === 0) {
+                    info.textContent = 'Showing 0-0 of 0 positions';
+                } else {
+                    info.textContent = `Showing ${startIndex + 1}-${endIndex} of ${totalPositions.toLocaleString()} positions (Page ${posPage} of ${totalPages})`;
+                }
+            }
+
+            const btnFirst = document.getElementById('btnPosFirst');
+            const btnPrev = document.getElementById('btnPosPrev');
+            const btnNext = document.getElementById('btnPosNext');
+            const btnLast = document.getElementById('btnPosLast');
+
+            if (btnFirst) btnFirst.disabled = posPage <= 1;
+            if (btnPrev) btnPrev.disabled = posPage <= 1;
+            if (btnNext) btnNext.disabled = posPage >= totalPages;
+            if (btnLast) btnLast.disabled = posPage >= totalPages;
+
+            const pageNumbersDiv = document.getElementById('posPageNumbers');
+            if (!pageNumbersDiv) return;
+
+            let html = '';
+            const maxVisibleButtons = 5;
+            let startPage = Math.max(1, posPage - 2);
+            let endPage = Math.min(totalPages, startPage + maxVisibleButtons - 1);
+
+            if (endPage - startPage + 1 < maxVisibleButtons) {
+                startPage = Math.max(1, endPage - maxVisibleButtons + 1);
+            }
+
+            for (let p = startPage; p <= endPage; p++) {
+                const activeClass = p === posPage ? 'active' : '';
+                html += `<button class="btn-page-nav ${activeClass}" onclick="goToPosPage(${p})">${p}</button>`;
+            }
+
+            pageNumbersDiv.innerHTML = html;
+        }
+
+        function changePosPage(delta) {
+            const newPage = posPage + delta;
+            if (newPage >= 1 && newPage <= totalPosPages) {
+                posPage = newPage;
+                fetchPositions();
+            }
+        }
+
+        function goToPosPage(p) {
+            if (p >= 1 && p <= totalPosPages) {
+                posPage = p;
+                fetchPositions();
+            }
+        }
+
+        function goToPosLastPage() {
+            posPage = totalPosPages;
+            fetchPositions();
+        }sitions();
         }
 
         async function showBotDetailsById(id) {
@@ -684,9 +870,13 @@
 
 
 
-        // Auto refresh
-        setInterval(fetchPositions, 1000);
+        // Auto refresh (5s interval, paused if tab hidden)
         fetchPositions();
+        setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                fetchPositions();
+            }
+        }, 5000);
     </script>
 
 

@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger("RiskManager")
 
 class RiskManager:
-    def __init__(self, risk_percent=2.0, stop_loss_pct=1.0, take_profit_pct=2.0, leverage=5, trade_amount_usd=None, **kwargs):
+    def __init__(self, risk_percent=2.0, stop_loss_pct=1.0, take_profit_pct=2.0, leverage=20, trade_amount_usd=None, **kwargs):
         self.risk_percent = float(risk_percent)
         self.stop_loss_pct = float(stop_loss_pct)
         self.take_profit_pct = float(take_profit_pct)

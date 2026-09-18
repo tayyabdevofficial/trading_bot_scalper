@@ -10,8 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>const IS_ADMIN = false; const IS_TESTNET = false;</script>
     <style>
         :root {
@@ -624,6 +622,174 @@
         .btn-sm-view:hover {
             background: var(--accent-blue);
             color: #0f172a;
+        }
+
+        /* Pagination Controls */
+        .btn-page-nav {
+            padding: 0.35rem 0.65rem;
+            border-radius: 7px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: #f8fafc;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 32px;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: inherit;
+        }
+        .btn-page-nav:hover:not(:disabled) {
+            background: rgba(168, 85, 247, 0.2);
+            border-color: rgba(168, 85, 247, 0.4);
+            color: #d8b4fe;
+        }
+        .btn-page-nav.active {
+            background: linear-gradient(135deg, #a855f7, #7c3aed);
+            border-color: #a855f7;
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(168, 85, 247, 0.35);
+        }
+        .btn-page-nav:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* Active Deployed Instances Toolbar - Full Width Responsive Bar */
+        .bots-header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.85rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .bots-header-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0;
+            white-space: nowrap;
+            color: #f8fafc;
+        }
+
+        .bot-filters-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+            margin-bottom: 0.95rem;
+            flex-wrap: wrap;
+        }
+
+        .bot-filter-search-box {
+            position: relative;
+            flex: 2 1 180px;
+            min-width: 140px;
+        }
+
+        .bot-filter-search-box input {
+            width: 100%;
+            height: 34px;
+            padding: 0.25rem 0.65rem 0.25rem 1.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            background: rgba(15, 23, 42, 0.85);
+            color: #f8fafc;
+            font-size: 0.82rem;
+            font-family: inherit;
+        }
+
+        .bot-filter-search-box svg {
+            position: absolute;
+            left: 0.6rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .bot-filter-select {
+            flex: 1.2 1 130px;
+            min-width: 115px;
+            height: 34px;
+            padding: 0.25rem 0.6rem;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            background: rgba(15, 23, 42, 0.85);
+            color: #f8fafc;
+            font-size: 0.82rem;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        .bot-filter-select.tf {
+            flex: 0.8 1 80px;
+            min-width: 75px;
+        }
+
+        .btn-bot-filter-reset {
+            flex: 0 0 auto;
+            height: 34px;
+            padding: 0.25rem 0.85rem;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+
+        .btn-bot-filter-reset:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        @media (max-width: 900px) {
+            .form-row, .form-row-3, .form-row-4 {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .bot-filter-search-box {
+                flex: 1 1 100%;
+            }
+            .bot-filter-select {
+                flex: 1 1 calc(50% - 0.25rem);
+            }
+            .bot-filter-select.tf {
+                flex: 1 1 calc(50% - 0.25rem);
+            }
+            .btn-bot-filter-reset {
+                flex: 1 1 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .form-row, .form-row-3, .form-row-4 {
+                grid-template-columns: 1fr !important;
+            }
+            .bot-filter-select {
+                flex: 1 1 100%;
+            }
+            .bot-filter-select.tf {
+                flex: 1 1 100%;
+            }
         }
 
         /* Modal Styles */
@@ -1259,24 +1425,24 @@
                         </div>
                         <div>
                             <label for="inputLeverage">
-                                <span>Leverage: <strong id="lblLeverage" style="color:var(--accent-purple);">10x</strong> <span id="lblMaxLeverage" style="font-size:0.7rem; color:var(--text-muted);">(Max: --x)</span></span>
-                                <span style="font-size: 0.72rem; color: var(--accent-blue);">Eff: <strong id="lblEffectiveSize">$200</strong></span>
+                                <span>Leverage: <strong id="lblLeverage" style="color:var(--accent-purple);">20x</strong> <span id="lblMaxLeverage" style="font-size:0.7rem; color:var(--text-muted);">(Max: --x)</span></span>
+                                <span style="font-size: 0.72rem; color: var(--accent-blue);">Eff: <strong id="lblEffectiveSize">$400.00</strong></span>
                             </label>
-                            <input type="range" id="inputLeverage" min="1" max="20" value="10" oninput="document.getElementById('lblLeverage').innerText = this.value + 'x'; updateEffectiveSize();">
+                            <input type="range" id="inputLeverage" min="1" max="125" value="20" oninput="document.getElementById('lblLeverage').innerText = this.value + 'x'; updateEffectiveSize();">
                         </div>
                         <div>
                             <label for="inputSL">
                                 <span>Stop Loss</span>
-                                <strong id="lblSL" style="color:var(--accent-red);">1.0%</strong>
+                                <strong id="lblSL" style="color:var(--accent-red);">0.0%</strong>
                             </label>
-                            <input type="range" id="inputSL" min="0.2" max="5" step="0.1" value="1.0" oninput="document.getElementById('lblSL').innerText = this.value + '%'">
+                            <input type="range" id="inputSL" min="0.0" max="5" step="0.1" value="0.0" oninput="document.getElementById('lblSL').innerText = this.value + '%'">
                         </div>
                         <div>
                             <label for="inputTP">
                                 <span>Take Profit</span>
-                                <strong id="lblTP" style="color:var(--accent-green);">2.0%</strong>
+                                <strong id="lblTP" style="color:var(--accent-green);">1.5%</strong>
                             </label>
-                            <input type="range" id="inputTP" min="0.5" max="10" step="0.5" value="2.0" oninput="document.getElementById('lblTP').innerText = this.value + '%'">
+                            <input type="range" id="inputTP" min="0.5" max="10" step="0.5" value="1.5" oninput="document.getElementById('lblTP').innerText = this.value + '%'">
                         </div>
                     </div>
 
@@ -1309,18 +1475,51 @@
 
             <!-- Bots Table -->
             <div class="glass-card" style="display: flex; flex-direction: column;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
-                    <h2 style="font-size: 1.25rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+                <div class="bots-header-top">
+                    <h2 class="bots-header-title">
                         <i data-lucide="layers" style="color: var(--accent-blue);"></i> Active Deployed Instances
                     </h2>
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">Environment:</span>
-                        <select id="tableNetworkFilter" onchange="fetchBots()" style="padding: 0.35rem 0.75rem; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(15, 23, 42, 0.8); color: #f8fafc; font-size: 0.85rem; font-weight: 600; font-family: inherit;">
-                            <option value="all">All Environments</option>
-                            <option value="mainnet">🟢 Mainnet Live</option>
-                            <option value="testnet">🔵 Testnet Paper</option>
-                        </select>
+                </div>
+                <!-- Bot Filter Controls across full width in a responsive single row -->
+                <div class="bot-filters-toolbar">
+                    <div class="bot-filter-search-box">
+                        <input type="text" id="botSearchInput" oninput="onBotFilterChange()" placeholder="Search Symbol / #ID...">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     </div>
+                    <select id="tableNetworkFilter" class="bot-filter-select" onchange="onBotFilterChange()" style="font-weight: 600;">
+                        <option value="all">All Environments</option>
+                        <option value="mainnet">🟢 Mainnet Live</option>
+                        <option value="testnet">🔵 Testnet Paper</option>
+                    </select>
+                    <select id="botStrategyFilter" class="bot-filter-select" onchange="onBotFilterChange()">
+                        <option value="all">All Strategies</option>
+                        <option value="EMA_Ribbon_Scalp">EMA Ribbon Scalp</option>
+                        <option value="Squeeze_Momentum_Scalp">Squeeze Momentum Scalp</option>
+                        <option value="Volume_Delta_Scalp">Volume Delta Scalp</option>
+                        <option value="Engulfing_Volume_Scalp">Engulfing Volume Scalp</option>
+                        <option value="RSI_Divergence_Scalp">RSI Divergence Scalp</option>
+                        <option value="Bollinger_Bands">Bollinger Bands</option>
+                        <option value="MACD_ZeroCross_Scalp">MACD Zero-Line Scalp</option>
+                        <option value="Stochastic_RSI">Stochastic RSI</option>
+                        <option value="SuperTrend">SuperTrend</option>
+                        <option value="EMA_RSI_Crossover">EMA RSI Crossover</option>
+                        <option value="Keltner_Channel_Breakout">Keltner Channel Breakout</option>
+                        <option value="Hull_MA_Scalp">Hull MA Scalp</option>
+                    </select>
+                    <select id="botStatusFilter" class="bot-filter-select" onchange="onBotFilterChange()">
+                        <option value="all">All Status</option>
+                        <option value="running">🟢 Running</option>
+                        <option value="stopped">🔴 Stopped</option>
+                    </select>
+                    <select id="botTfFilter" class="bot-filter-select tf" onchange="onBotFilterChange()">
+                        <option value="all">All TFs</option>
+                        <option value="5m">5m</option>
+                        <option value="15m">15m</option>
+                    </select>
+                    <button onclick="resetBotFilters()" title="Reset Filters" class="btn-bot-filter-reset">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                        Reset
+                    </button>
                 </div>
                 <div class="bot-table-wrapper">
                     <table class="bot-table">
@@ -1333,35 +1532,29 @@
                                 <th>Strategy</th>
                                 <th>Timeframe</th>
                                 <th>Status</th>
-                                <th>Live Price</th>
                                 <th>Leverage</th>
-                                <th>Trade USD</th>
-                                <th>SL %</th>
-                                <th>TP %</th>
+                                <th>Trade Amount</th>
+                                <th>TP / SL Target</th>
                             </tr>
                         </thead>
                         <tbody id="botsTableBody">
-                            <tr><td colspan="12" style="text-align:center; color:var(--text-muted); padding:2rem;">No bots deployed.</td></tr>
+                            <tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:2rem;">No bots deployed.</td></tr>
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
 
-        <!-- Bottom section: Chart spanning full width -->
-        <div class="bottom-section-grid" style="grid-template-columns: 1fr;">
-            <!-- PnL Chart -->
-            <div class="glass-card">
-                <div class="view-filter-bar" style="display: flex; justify-content: space-between; align-items: center;">
-                    <h2 style="font-size: 1.25rem; font-weight: 600;">System PnL Performance</h2>
-                    <select id="pnlPeriodFilter" onchange="updatePnLChart()" style="width: auto; min-width: 120px; padding: 0.3rem 0.6rem; background: rgba(15,23,42,0.8); border: 1px solid var(--glass-border); border-radius: 6px; color: #f8fafc; font-size: 0.85rem; font-family: inherit;">
-                        <option value="24h">Last 24 Hours (Hourly)</option>
-                        <option value="48h">Last 48 Hours (Hourly)</option>
-                        <option value="30d" selected>Last 30 Days (Daily)</option>
-                    </select>
-                </div>
-                <div style="height: 350px; width: 100%; margin-top: 1rem;">
-                    <canvas id="pnlChart"></canvas>
+                <!-- Bot Pagination Controls -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid rgba(255, 255, 255, 0.05); flex-wrap: wrap; gap: 0.75rem;">
+                    <div id="botPaginationInfo" style="font-size: 0.82rem; color: var(--text-muted);">
+                        Showing 0-0 of 0 bots
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.35rem;">
+                        <button id="btnBotFirst" class="btn-page-nav" onclick="goToBotPage(1)" title="First Page">&laquo;</button>
+                        <button id="btnBotPrev" class="btn-page-nav" onclick="changeBotPage(-1)" title="Previous Page">&lsaquo;</button>
+                        <div id="botPageNumbers" style="display: flex; gap: 0.35rem;"></div>
+                        <button id="btnBotNext" class="btn-page-nav" onclick="changeBotPage(1)" title="Next Page">&rsaquo;</button>
+                        <button id="btnBotLast" class="btn-page-nav" onclick="goToBotLastPage()" title="Last Page">&raquo;</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1522,12 +1715,166 @@
             updateEffectiveSize();
         }
 
-        let chart = null;
         let loadedBots = [];
+        let botPage = 1;
+        const BOT_PAGE_SIZE = 20;
+        let totalBotCount = 0;
+        let totalBotPages = 1;
+
+        function onBotFilterChange() {
+            botPage = 1;
+            fetchBots();
+        }
+
+        function resetBotFilters() {
+            const searchInput = document.getElementById('botSearchInput');
+            const netFilter = document.getElementById('tableNetworkFilter');
+            const stratFilter = document.getElementById('botStrategyFilter');
+            const statusFilter = document.getElementById('botStatusFilter');
+            const tfFilter = document.getElementById('botTfFilter');
+
+            if (searchInput) searchInput.value = '';
+            if (netFilter) netFilter.value = 'all';
+            if (stratFilter) stratFilter.value = 'all';
+            if (statusFilter) statusFilter.value = 'all';
+            if (tfFilter) tfFilter.value = 'all';
+
+            botPage = 1;
+            fetchBots();
+        }
+
+        function renderBotsTable() {
+            const tbody = document.getElementById('botsTableBody');
+            if (!tbody) return;
+
+            const startIndex = (botPage - 1) * BOT_PAGE_SIZE;
+            const endIndex = Math.min(startIndex + BOT_PAGE_SIZE, totalBotCount);
+
+            // Render pagination controls
+            renderBotPagination(totalBotCount, totalBotPages, startIndex, endIndex);
+
+            if (!loadedBots || loadedBots.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:2rem;">No bots match the selected filters.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = loadedBots.map(b => {
+                const statusClass = b.is_running ? 'bot-status-light running' : 'bot-status-light';
+                const statusText = b.is_running ? 'RUNNING' : 'STOPPED';
+                const btnClass = b.is_running ? 'btn-sm-toggle stop' : 'btn-sm-toggle start';
+                const btnIcon = b.is_running 
+                    ? `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 2px;"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>` 
+                    : `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 2px;"><polygon points="6 3 20 12 6 21 6 3"/></svg>`;
+                const btnLabel = `${btnIcon}`;
+                const deleteIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>`;
+
+                const isMainnet = (b.network || 'mainnet').toLowerCase() === 'mainnet';
+                const netBadge = isMainnet
+                    ? `<span style="font-size:0.72rem;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(34,197,94,0.3);letter-spacing:0.5px;">MAINNET</span>`
+                    : `<span style="font-size:0.72rem;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);letter-spacing:0.5px;">TESTNET</span>`;
+
+                const tradeUsd = b.parameters?.trade_amount_usd ? `$${parseFloat(b.parameters.trade_amount_usd).toFixed(2)}` : '—';
+                const leverage = b.parameters?.leverage ? `${b.parameters.leverage}x` : '—';
+                const candleInterval = b.parameters?.candle_interval || '—';
+                const editIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+
+                return `
+                    <tr id="bot-row-${b.id}" class="${b.position && b.position.length > 0 ? 'active-pos-row' : ''}">
+                        <td data-label="Actions">
+                            <div style="display: flex; gap: 0.4rem;">
+                                <button class="${btnClass}" onclick="toggleBot(${b.id})">${btnLabel}</button>
+                                <button class="btn-sm-toggle" style="background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid rgba(56,189,248,0.25);" onclick="openEditBot(${b.id})">${editIcon}</button>
+                                <a class="btn-sm-view" title="View details" href="/bot-info?bot_id=${b.id}" style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2); color: var(--accent-blue); cursor: pointer; text-decoration: none;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </a>
+                                <button class="btn-sm-delete" title="Delete bot" onclick="deleteBot(${b.id})">${deleteIcon}</button>
+                            </div>
+                        </td>
+                        <td data-label="#ID"><strong style="color: var(--accent-purple)">#${b.id}</strong></td>
+                        <td data-label="Network">${netBadge}</td>
+                        <td data-label="Symbol"><strong>${b.symbol}</strong></td>
+                        <td data-label="Strategy"><span style="font-size: 0.8rem; background: rgba(168,85,247,0.15); color: #d8b4fe; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 600;">${b.strategy_name}</span></td>
+                        <td data-label="Timeframe"><span style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">${candleInterval}</span></td>
+                        <td data-label="Status">
+                            <div class="${statusClass}">
+                                <div class="light"></div>
+                                <span>${statusText}</span>
+                            </div>
+                        </td>
+                        <td data-label="Leverage"><strong style="color: #cbd5e1;">${leverage}</strong></td>
+                        <td data-label="Trade Amount">${tradeUsd}</td>
+                        <td data-label="TP / SL Target">
+                            <span style="color: var(--accent-green); font-weight: 600;">TP ${b.parameters?.take_profit_pct ?? 0}%</span>
+                            <span style="color: var(--text-muted); margin: 0 4px;">•</span>
+                            <span style="color: ${b.parameters?.stop_loss_pct > 0 ? 'var(--accent-red)' : 'var(--text-muted)'}; font-weight: 600;">SL ${b.parameters?.stop_loss_pct ?? 0}%</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderBotPagination(totalBots, totalPages, startIndex, endIndex) {
+            const info = document.getElementById('botPaginationInfo');
+            if (info) {
+                if (totalBots === 0) {
+                    info.textContent = 'Showing 0-0 of 0 bots';
+                } else {
+                    info.textContent = `Showing ${startIndex + 1}-${endIndex} of ${totalBots.toLocaleString()} bots (Page ${botPage} of ${totalPages})`;
+                }
+            }
+
+            const btnFirst = document.getElementById('btnBotFirst');
+            const btnPrev = document.getElementById('btnBotPrev');
+            const btnNext = document.getElementById('btnBotNext');
+            const btnLast = document.getElementById('btnBotLast');
+
+            if (btnFirst) btnFirst.disabled = botPage <= 1;
+            if (btnPrev) btnPrev.disabled = botPage <= 1;
+            if (btnNext) btnNext.disabled = botPage >= totalPages;
+            if (btnLast) btnLast.disabled = botPage >= totalPages;
+
+            const pageNumbersDiv = document.getElementById('botPageNumbers');
+            if (!pageNumbersDiv) return;
+
+            let html = '';
+            const maxVisibleButtons = 5;
+            let startPage = Math.max(1, botPage - 2);
+            let endPage = Math.min(totalPages, startPage + maxVisibleButtons - 1);
+
+            if (endPage - startPage + 1 < maxVisibleButtons) {
+                startPage = Math.max(1, endPage - maxVisibleButtons + 1);
+            }
+
+            for (let p = startPage; p <= endPage; p++) {
+                const activeClass = p === botPage ? 'active' : '';
+                html += `<button class="btn-page-nav ${activeClass}" onclick="goToBotPage(${p})">${p}</button>`;
+            }
+
+            pageNumbersDiv.innerHTML = html;
+        }
+
+        function changeBotPage(delta) {
+            const newPage = botPage + delta;
+            if (newPage >= 1 && newPage <= totalBotPages) {
+                botPage = newPage;
+                fetchBots();
+            }
+        }
+
+        function goToBotPage(p) {
+            if (p >= 1 && p <= totalBotPages) {
+                botPage = p;
+                fetchBots();
+            }
+        }
+
+        function goToBotLastPage() {
+            botPage = totalBotPages;
+            fetchBots();
+        }
 
         function formatPrice(val) {
             if (val === undefined || val === null || isNaN(val) || Number(val) === 0) return '—';
-            // strip trailing zeros by converting to float after fixing precision to 10 decimals
             return parseFloat(Number(val).toFixed(10)).toString();
         }
 
@@ -1540,58 +1887,58 @@
         document.getElementById('inputUSDAmount')?.addEventListener('input', updateEffectiveSize);
 
         const tfConfig = {
-            "5m":  { sl: 1.0, tp: 2.0 },
-            "15m": { sl: 1.5, tp: 3.0 }
+            "5m":  { sl: 0.0, tp: 1.5 },
+            "15m": { sl: 0.0, tp: 2.0 }
         };
 
         const strategyDefaults = {
             "EMA_Ribbon_Scalp": {
-                "5m": { fast_ema: 5, med_ema: 8, slow_ema: 13, base_ema: 21, sl: 1.0, tp: 2.0, mtf: true, chop: false },
-                "15m": { fast_ema: 8, med_ema: 13, slow_ema: 21, base_ema: 34, sl: 1.5, tp: 3.0, mtf: true, chop: false }
+                "5m": { fast_ema: 5, med_ema: 8, slow_ema: 13, base_ema: 21, sl: 0.0, tp: 1.0, mtf: false, chop: false },
+                "15m": { fast_ema: 8, med_ema: 13, slow_ema: 21, base_ema: 34, sl: 0.0, tp: 1.5, mtf: false, chop: false }
             },
             "Squeeze_Momentum_Scalp": {
-                "5m": { bb_period: 20, bb_std: 2.0, kc_period: 20, kc_mult: 1.5, mom_period: 12, sl: 1.0, tp: 2.5, mtf: false, chop: false },
-                "15m": { bb_period: 20, bb_std: 2.0, kc_period: 20, kc_mult: 1.5, mom_period: 12, sl: 1.5, tp: 3.5, mtf: false, chop: false }
+                "5m": { bb_period: 20, bb_std: 2.0, kc_period: 20, kc_mult: 1.5, mom_period: 12, sl: 0.0, tp: 1.0, mtf: false, chop: false },
+                "15m": { bb_period: 20, bb_std: 2.0, kc_period: 20, kc_mult: 1.5, mom_period: 12, sl: 0.0, tp: 1.5, mtf: false, chop: false }
             },
             "Volume_Delta_Scalp": {
-                "5m": { vol_mult: 2.2, vol_period: 20, rsi_period: 14, sl: 1.0, tp: 2.0, mtf: false, chop: false },
-                "15m": { vol_mult: 2.0, vol_period: 20, rsi_period: 14, sl: 1.5, tp: 3.0, mtf: false, chop: false }
+                "5m": { vol_mult: 2.2, vol_period: 20, rsi_period: 14, sl: 0.0, tp: 1.5, mtf: false, chop: false },
+                "15m": { vol_mult: 2.0, vol_period: 20, rsi_period: 14, sl: 0.0, tp: 2.0, mtf: false, chop: false }
             },
             "Engulfing_Volume_Scalp": {
-                "5m": { vol_mult: 1.5, vol_period: 20, body_mult: 1.2, sl: 1.0, tp: 2.0, mtf: false, chop: false },
-                "15m": { vol_mult: 1.5, vol_period: 20, body_mult: 1.2, sl: 1.5, tp: 3.0, mtf: false, chop: false }
+                "5m": { vol_mult: 1.5, vol_period: 20, body_mult: 1.2, sl: 0.0, tp: 1.5, mtf: false, chop: false },
+                "15m": { vol_mult: 1.5, vol_period: 20, body_mult: 1.2, sl: 0.0, tp: 2.5, mtf: false, chop: false }
             },
             "RSI_Divergence_Scalp": {
-                "5m": { lookback: 20, rsi_period: 14, ema_trend: 50, sl: 1.2, tp: 2.5, mtf: true, chop: true },
-                "15m": { lookback: 25, rsi_period: 14, ema_trend: 50, sl: 1.5, tp: 3.0, mtf: true, chop: true }
+                "5m": { lookback: 25, rsi_period: 14, ema_trend: 50, sl: 0.0, tp: 1.5, mtf: false, chop: false },
+                "15m": { lookback: 25, rsi_period: 14, ema_trend: 50, sl: 0.0, tp: 2.5, mtf: false, chop: false }
             },
             "Bollinger_Bands": {
-                "5m": { period: 20, num_std: 2.0, rsi_period: 14, max_adx: 28.0, sl: 1.0, tp: 2.0, mtf: false, chop: true },
-                "15m": { period: 20, num_std: 2.0, rsi_period: 14, max_adx: 28.0, sl: 1.5, tp: 3.0, mtf: false, chop: true }
+                "5m": { period: 20, num_std: 2.0, rsi_period: 14, max_adx: 28.0, sl: 0.0, tp: 1.5, mtf: false, chop: false },
+                "15m": { period: 20, num_std: 2.0, rsi_period: 14, max_adx: 28.0, sl: 0.0, tp: 2.0, mtf: false, chop: false }
             },
             "MACD_ZeroCross_Scalp": {
-                "5m": { fast: 3, slow: 10, signal: 16, sl: 1.0, tp: 2.0, mtf: false, chop: false },
-                "15m": { fast: 4, slow: 12, signal: 16, sl: 1.5, tp: 3.0, mtf: false, chop: false }
+                "5m": { fast: 3, slow: 10, signal: 16, sl: 0.0, tp: 1.5, mtf: false, chop: false },
+                "15m": { fast: 4, slow: 12, signal: 16, sl: 0.0, tp: 2.0, mtf: false, chop: false }
             },
             "Stochastic_RSI": {
-                "5m": { rsi_period: 14, stoch_period: 14, k_period: 3, d_period: 3, buy_threshold: 20, sell_threshold: 80, max_adx: 28.0, sl: 1.0, tp: 2.0, mtf: false, chop: true },
-                "15m": { rsi_period: 14, stoch_period: 14, k_period: 3, d_period: 3, buy_threshold: 20, sell_threshold: 80, max_adx: 28.0, sl: 1.5, tp: 3.0, mtf: false, chop: true }
+                "5m": { rsi_period: 14, stoch_period: 14, k_period: 3, d_period: 3, buy_threshold: 20, sell_threshold: 80, max_adx: 28.0, sl: 0.0, tp: 1.5, mtf: false, chop: false },
+                "15m": { rsi_period: 14, stoch_period: 14, k_period: 3, d_period: 3, buy_threshold: 20, sell_threshold: 80, max_adx: 28.0, sl: 0.0, tp: 2.0, mtf: false, chop: false }
             },
             "SuperTrend": {
-                "5m": { period: 10, multiplier: 2.5, sl: 1.0, tp: 2.5, mtf: false, chop: false },
-                "15m": { period: 10, multiplier: 3.0, sl: 1.5, tp: 3.5, mtf: false, chop: false }
+                "5m": { period: 10, multiplier: 2.5, sl: 0.0, tp: 2.0, mtf: false, chop: false },
+                "15m": { period: 10, multiplier: 3.0, sl: 0.0, tp: 3.0, mtf: false, chop: false }
             },
             "EMA_RSI_Crossover": {
-                "5m": { ema_short: 9, ema_long: 21, rsi_period: 14, rsi_overbought: 70, rsi_oversold: 30, sl: 1.0, tp: 2.0, mtf: true, chop: false },
-                "15m": { ema_short: 9, ema_long: 21, rsi_period: 14, rsi_overbought: 70, rsi_oversold: 30, sl: 1.5, tp: 3.0, mtf: true, chop: false }
+                "5m": { ema_short: 9, ema_long: 21, rsi_period: 14, rsi_overbought: 70, rsi_oversold: 30, sl: 0.0, tp: 1.5, mtf: false, chop: false },
+                "15m": { ema_short: 9, ema_long: 21, rsi_period: 14, rsi_overbought: 70, rsi_oversold: 30, sl: 0.0, tp: 2.0, mtf: false, chop: false }
             },
             "Keltner_Channel_Breakout": {
-                "5m": { ema_period: 20, atr_period: 14, atr_mult: 2.0, min_adx: 22.0, sl: 1.2, tp: 3.0, mtf: false, chop: false },
-                "15m": { ema_period: 20, atr_period: 14, atr_mult: 2.0, min_adx: 22.0, sl: 1.5, tp: 3.5, mtf: false, chop: false }
+                "5m": { ema_period: 20, atr_period: 14, atr_mult: 2.0, min_adx: 22.0, sl: 0.0, tp: 2.0, mtf: false, chop: false },
+                "15m": { ema_period: 20, atr_period: 14, atr_mult: 2.0, min_adx: 22.0, sl: 0.0, tp: 3.0, mtf: false, chop: false }
             },
             "Hull_MA_Scalp": {
-                "5m": { period: 9, rsi_period: 14, sl: 0.8, tp: 1.8, mtf: true, chop: false },
-                "15m": { period: 12, rsi_period: 14, sl: 1.2, tp: 2.5, mtf: true, chop: false }
+                "5m": { period: 9, rsi_period: 14, sl: 0.0, tp: 1.0, mtf: false, chop: false },
+                "15m": { period: 12, rsi_period: 14, sl: 0.0, tp: 1.5, mtf: false, chop: false }
             }
         };
 
@@ -1884,6 +2231,7 @@
                     </div>
                 `;
             }
+            updateEffectiveSize();
         }
 
         // Show/Collapse Deploy Bot Instance Form
@@ -1929,7 +2277,7 @@
             const symbol = document.getElementById('inputSymbol').value;
             const strategy_name = document.getElementById('inputStrategy').value;
             const leverage = parseInt(document.getElementById('inputLeverage').value);
-            const trade_amount_usd = parseFloat(document.getElementById('inputUSDAmount').value) || 50;
+            const trade_amount_usd = parseFloat(document.getElementById('inputUSDAmount').value) || 20;
             const stop_loss_pct = parseFloat(document.getElementById('inputSL').value);
             const take_profit_pct = parseFloat(document.getElementById('inputTP').value);
 
@@ -1979,266 +2327,131 @@
             }
         }
 
-        // Fetch bots list
+        // Fetch bots list with server-side pagination
         async function fetchBots() {
             try {
-                const resp = await fetch(apiBase + '/bots');
-                const bots = await resp.json();
-                
-                const closedResp = await fetch(apiBase + '/closed-positions');
-                const closedPositions = await closedResp.json();
-                
-                // Sync status metric overview
-                // 1. Unified Wallet Balance (Single Overall Balance for Mainnet & Testnet)
-                if (bots.length > 0 && bots[0].shared_balance !== undefined) {
-                    document.getElementById('totalBalance').innerText = `$${bots[0].shared_balance.toFixed(2)}`;
-                    document.getElementById('availableBalance').innerText = `$${bots[0].available_balance.toFixed(2)}`;
-                } else {
-                    try {
-                        const balResp = await fetch(apiBase + '/balance');
-                        if (balResp.ok) {
-                            const balData = await balResp.json();
-                            document.getElementById('totalBalance').innerText = `$${balData.total_balance.toFixed(2)}`;
-                            document.getElementById('availableBalance').innerText = `$${balData.available_balance.toFixed(2)}`;
-                        } else {
-                            document.getElementById('totalBalance').innerText = `$500.00`;
-                            document.getElementById('availableBalance').innerText = `$500.00`;
-                        }
-                    } catch (_) {
-                        document.getElementById('totalBalance').innerText = `$500.00`;
-                        document.getElementById('availableBalance').innerText = `$500.00`;
-                    }
-                }
-
-                // 2. Bots Counts (Overall Total & Running + Mainnet / Testnet breakdown)
-                const mainnetBots = bots.filter(b => (b.network || 'mainnet').toLowerCase() === 'mainnet');
-                const testnetBots = bots.filter(b => (b.network || 'mainnet').toLowerCase() === 'testnet');
-                const mainnetRunning = mainnetBots.filter(b => b.is_running).length;
-                const testnetRunning = testnetBots.filter(b => b.is_running).length;
-
-                document.getElementById('totalBotsCount').innerText = bots.length;
-                document.getElementById('activeBotsCount').innerText = bots.filter(b => b.is_running).length;
-                const mainnetBotsCountEl = document.getElementById('mainnetBotsCount');
-                if (mainnetBotsCountEl) mainnetBotsCountEl.innerText = `${mainnetRunning}/${mainnetBots.length}`;
-                const testnetBotsCountEl = document.getElementById('testnetBotsCount');
-                if (testnetBotsCountEl) testnetBotsCountEl.innerText = `${testnetRunning}/${testnetBots.length}`;
-                
-                // 3. Open Positions & 4. Unrealized PnL (Overall Total + Mainnet / Testnet breakdown)
-                let mainnetOpenCount = 0;
-                let testnetOpenCount = 0;
-                let mainnetUnrealizedPnl = 0.0;
-                let testnetUnrealizedPnl = 0.0;
-                
-                bots.forEach(b => {
-                    const isMainnet = (b.network || 'mainnet').toLowerCase() === 'mainnet';
-                    if (b.position) {
-                        const positions = Array.isArray(b.position) ? b.position : [b.position];
-                        if (isMainnet) {
-                            mainnetOpenCount += positions.length;
-                        } else {
-                            testnetOpenCount += positions.length;
-                        }
-                        
-                        positions.forEach(pos => {
-                            if (b.latest_price > 0 && pos.entry_price > 0) {
-                                let posPnl = 0.0;
-                                if (pos.side.toUpperCase() === 'BUY') {
-                                    posPnl = (b.latest_price - pos.entry_price) * pos.qty;
-                                } else {
-                                    posPnl = (pos.entry_price - b.latest_price) * pos.qty;
-                                }
-                                if (isMainnet) {
-                                    mainnetUnrealizedPnl += posPnl;
-                                } else {
-                                    testnetUnrealizedPnl += posPnl;
-                                }
-                            }
-                        });
-                    }
-                });
-                
-                // Sync Open Positions Card
-                const totalOpenPositions = mainnetOpenCount + testnetOpenCount;
-                document.getElementById('activePositionsCount').innerText = totalOpenPositions;
-                const mainnetOpenPosEl = document.getElementById('mainnetOpenPositionsCount');
-                if (mainnetOpenPosEl) mainnetOpenPosEl.innerText = mainnetOpenCount;
-                const testnetOpenPosEl = document.getElementById('testnetOpenPositionsCount');
-                if (testnetOpenPosEl) testnetOpenPosEl.innerText = testnetOpenCount;
-
-                // Sync Unrealized PnL Card
-                const totalUnrealizedPnl = mainnetUnrealizedPnl + testnetUnrealizedPnl;
-                const unPnlElem = document.getElementById('unrealizedPnlVal');
-                if (unPnlElem) {
-                    unPnlElem.innerText = (totalUnrealizedPnl >= 0 ? '+' : '') + '$' + totalUnrealizedPnl.toFixed(2);
-                    unPnlElem.style.color = totalUnrealizedPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-                }
-                const mainnetUnPnlEl = document.getElementById('mainnetUnrealizedPnl');
-                if (mainnetUnPnlEl) {
-                    mainnetUnPnlEl.innerText = (mainnetUnrealizedPnl >= 0 ? '+' : '') + '$' + mainnetUnrealizedPnl.toFixed(2);
-                    mainnetUnPnlEl.style.color = mainnetUnrealizedPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-                }
-                const testnetUnPnlEl = document.getElementById('testnetUnrealizedPnl');
-                if (testnetUnPnlEl) {
-                    testnetUnPnlEl.innerText = (testnetUnrealizedPnl >= 0 ? '+' : '') + '$' + testnetUnrealizedPnl.toFixed(2);
-                    testnetUnPnlEl.style.color = testnetUnrealizedPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-                }
-
-                // 5. Closed Positions & 6. Realized PnL Summary (Overall Total + Mainnet / Testnet breakdown)
-                const activeBotIds = new Set(bots.map(b => b.id));
-                const validClosedPositions = closedPositions.filter(p => activeBotIds.has(p.bot_id));
-                
-                const mainnetClosed = validClosedPositions.filter(p => (p.network || 'mainnet').toLowerCase() === 'mainnet');
-                const testnetClosed = validClosedPositions.filter(p => (p.network || 'mainnet').toLowerCase() === 'testnet');
-
-                document.getElementById('closedPositionsCount').innerText = validClosedPositions.length;
-                const mainnetClosedCountEl = document.getElementById('mainnetClosedCount');
-                if (mainnetClosedCountEl) mainnetClosedCountEl.innerText = mainnetClosed.length;
-                const testnetClosedCountEl = document.getElementById('testnetClosedCount');
-                if (testnetClosedCountEl) testnetClosedCountEl.innerText = testnetClosed.length;
-
-                // Realized PnL breakdown
-                const mainnetRealizedPnlVal = mainnetClosed.reduce((acc, curr) => acc + (curr.realized_pnl || 0), 0);
-                const testnetRealizedPnlVal = testnetClosed.reduce((acc, curr) => acc + (curr.realized_pnl || 0), 0);
-                const netPnLVal = mainnetRealizedPnlVal + testnetRealizedPnlVal;
-
-                const netRealizedPnlElem = document.getElementById('netRealizedPnl');
-                if (netRealizedPnlElem) {
-                    netRealizedPnlElem.innerText = (netPnLVal >= 0 ? '+' : '') + '$' + netPnLVal.toFixed(2);
-                    netRealizedPnlElem.style.color = netPnLVal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-                }
-                const mainnetRealizedPnlEl = document.getElementById('mainnetRealizedPnl');
-                if (mainnetRealizedPnlEl) {
-                    mainnetRealizedPnlEl.innerText = (mainnetRealizedPnlVal >= 0 ? '+' : '') + '$' + mainnetRealizedPnlVal.toFixed(2);
-                    mainnetRealizedPnlEl.style.color = mainnetRealizedPnlVal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-                }
-                const testnetRealizedPnlEl = document.getElementById('testnetRealizedPnl');
-                if (testnetRealizedPnlEl) {
-                    testnetRealizedPnlEl.innerText = (testnetRealizedPnlVal >= 0 ? '+' : '') + '$' + testnetRealizedPnlVal.toFixed(2);
-                    testnetRealizedPnlEl.style.color = testnetRealizedPnlVal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-                }
-
-                // Compute profit/loss metrics (excluding deleted bots)
-                const profitTrades = validClosedPositions.filter(p => p.realized_pnl > 0);
-                const lossTrades = validClosedPositions.filter(p => p.realized_pnl < 0);
-                
-                const profitCountVal = profitTrades.length;
-                const totalProfitVal = profitTrades.reduce((acc, curr) => acc + curr.realized_pnl, 0);
-                const lossCountVal = lossTrades.length;
-                const totalLossVal = lossTrades.reduce((acc, curr) => acc + Math.abs(curr.realized_pnl), 0);
-
-                document.getElementById('profitCount').innerText = profitCountVal;
-                document.getElementById('totalProfit').innerText = '+$' + totalProfitVal.toFixed(2);
-                document.getElementById('lossCount').innerText = lossCountVal;
-                document.getElementById('totalLoss').innerText = '-$' + totalLossVal.toFixed(2);
-
-                // Sync filters
-                syncDropdowns(bots);
-
-                const tbody = document.getElementById('botsTableBody');
-
+                const searchQuery = (document.getElementById('botSearchInput')?.value || '').trim();
                 const netFilter = document.getElementById('tableNetworkFilter')?.value || 'all';
-                let displayBots = bots;
-                if (netFilter !== 'all') {
-                    displayBots = bots.filter(b => (b.network || 'mainnet').toLowerCase() === netFilter.toLowerCase());
+                const stratFilter = document.getElementById('botStrategyFilter')?.value || 'all';
+                const statusFilter = document.getElementById('botStatusFilter')?.value || 'all';
+                const tfFilter = document.getElementById('botTfFilter')?.value || 'all';
+
+                const qParams = new URLSearchParams({
+                    page: botPage,
+                    page_size: BOT_PAGE_SIZE
+                });
+                if (netFilter !== 'all') qParams.append('network', netFilter);
+                if (stratFilter !== 'all') qParams.append('strategy', stratFilter);
+                if (statusFilter !== 'all') qParams.append('status', statusFilter);
+                if (tfFilter !== 'all') qParams.append('timeframe', tfFilter);
+                if (searchQuery) qParams.append('search', searchQuery);
+
+                // Fetch paginated bots & top metrics in parallel
+                const [botsResp, balResp, posResp, closedResp] = await Promise.all([
+                    fetch(apiBase + '/bots?' + qParams.toString()),
+                    fetch(apiBase + '/balance').catch(() => null),
+                    fetch(apiBase + '/positions?all_items=true').catch(() => null),
+                    fetch(apiBase + '/closed-positions?page=1&page_size=1').catch(() => null)
+                ]);
+
+                const botsData = await botsResp.json();
+                if (botsData && botsData.items !== undefined) {
+                    loadedBots = botsData.items;
+                    totalBotCount = botsData.total || 0;
+                    totalBotPages = botsData.total_pages || 1;
+                } else if (Array.isArray(botsData)) {
+                    loadedBots = botsData;
+                    totalBotCount = botsData.length;
+                    totalBotPages = Math.max(1, Math.ceil(totalBotCount / BOT_PAGE_SIZE));
                 }
 
-                if (displayBots.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; color:var(--text-muted); padding:2rem;">No bots deployed${netFilter !== 'all' ? ' on ' + netFilter : ''}.</td></tr>`;
-                    loadedBots = bots;
-                    return;
+                // 1. Balance Metrics
+                if (balResp && balResp.ok) {
+                    const balData = await balResp.json();
+                    document.getElementById('totalBalance').innerText = `$${parseFloat(balData.total_balance || 500).toFixed(2)}`;
+                    document.getElementById('availableBalance').innerText = `$${parseFloat(balData.available_balance || 500).toFixed(2)}`;
                 }
 
-                tbody.innerHTML = displayBots.map(b => {
-                    const statusClass = b.is_running ? 'bot-status-light running' : 'bot-status-light';
-                    const statusText = b.is_running ? 'RUNNING' : 'STOPPED';
-                    const btnClass = b.is_running ? 'btn-sm-toggle stop' : 'btn-sm-toggle start';
-                    const btnIcon = b.is_running 
-                        ? `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 2px;"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>` 
-                        : `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 2px;"><polygon points="6 3 20 12 6 21 6 3"/></svg>`;
-                    const btnLabel = `${btnIcon}`;
-                    const deleteIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>`;
+                // 2. Open Positions & Unrealized PnL Metrics
+                if (posResp && posResp.ok) {
+                    const positions = await posResp.json();
+                    const openPositions = Array.isArray(positions) ? positions : (positions.items || []);
+                    
+                    let mainnetOpenCount = 0;
+                    let testnetOpenCount = 0;
+                    let mainnetUnrealizedPnl = 0.0;
+                    let testnetUnrealizedPnl = 0.0;
 
-                    const isMainnet = (b.network || 'mainnet').toLowerCase() === 'mainnet';
-                    const netBadge = isMainnet
-                        ? `<span style="font-size:0.72rem;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(34,197,94,0.3);letter-spacing:0.5px;">MAINNET</span>`
-                        : `<span style="font-size:0.72rem;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);letter-spacing:0.5px;">TESTNET</span>`;
+                    openPositions.forEach(({ bot: b, pos }) => {
+                        const isMainnet = (b.network || 'mainnet').toLowerCase() === 'mainnet';
+                        if (isMainnet) mainnetOpenCount++; else testnetOpenCount++;
 
-                    let sideHtml = '—';
-                    let entryPriceHtml = '—';
-                    let currPriceHtml = '—';
-                    let pnlHtml = '<span class="pnl-neutral">—</span>';
-
-                    if (b.position) {
-                        const positions = Array.isArray(b.position) ? b.position : [b.position];
-                        if (positions.length > 0) {
-                            sideHtml = positions.map(pos => {
-                                const sideClass = pos.side === 'BUY' ? 'badge-buy' : 'badge-sell';
-                                return `<span class="${sideClass}" style="display: block; margin-bottom: 2px; text-align: center;">${pos.side}</span>`;
-                            }).join('');
-                            
-                            entryPriceHtml = positions.map(pos => {
-                                return `<span style="display: block; margin-bottom: 2px;">$${formatPrice(pos.entry_price)}</span>`;
-                            }).join('');
-                            
-                            currPriceHtml = positions.map(pos => {
-                                return `<span style="display: block; margin-bottom: 2px;">${b.latest_price ? `$${formatPrice(b.latest_price)}` : '—'}</span>`;
-                            }).join('');
-                            
-                            pnlHtml = positions.map(pos => {
-                                let pnl = 0.0;
-                                if (b.latest_price > 0) {
-                                    if (pos.side === 'BUY') {
-                                        pnl = (b.latest_price - pos.entry_price) * pos.qty;
-                                    } else {
-                                        pnl = (pos.entry_price - b.latest_price) * pos.qty;
-                                    }
-                                }
-                                const pnlSign = pnl >= 0 ? '+' : '';
-                                const pnlClass = pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
-                                return `<span class="${pnlClass}" style="display: block; margin-bottom: 2px;">${pnlSign}$${pnl.toFixed(2)}</span>`;
-                            }).join('');
+                        if (b.latest_price > 0 && pos.entry_price > 0) {
+                            let posPnl = 0.0;
+                            if ((pos.side || '').toUpperCase() === 'BUY') {
+                                posPnl = (b.latest_price - pos.entry_price) * pos.qty;
+                            } else {
+                                posPnl = (pos.entry_price - b.latest_price) * pos.qty;
+                            }
+                            if (isMainnet) mainnetUnrealizedPnl += posPnl; else testnetUnrealizedPnl += posPnl;
                         }
+                    });
+
+                    const totalOpenPositions = mainnetOpenCount + testnetOpenCount;
+                    document.getElementById('activePositionsCount').innerText = totalOpenPositions;
+                    const mainnetOpenPosEl = document.getElementById('mainnetOpenPositionsCount');
+                    if (mainnetOpenPosEl) mainnetOpenPosEl.innerText = mainnetOpenCount;
+                    const testnetOpenPosEl = document.getElementById('testnetOpenPositionsCount');
+                    if (testnetOpenPosEl) testnetOpenPosEl.innerText = testnetOpenCount;
+
+                    const totalUnrealizedPnl = mainnetUnrealizedPnl + testnetUnrealizedPnl;
+                    const unPnlElem = document.getElementById('unrealizedPnlVal');
+                    if (unPnlElem) {
+                        unPnlElem.innerText = (totalUnrealizedPnl >= 0 ? '+' : '') + '$' + totalUnrealizedPnl.toFixed(2);
+                        unPnlElem.style.color = totalUnrealizedPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                    }
+                    const mainnetUnPnlEl = document.getElementById('mainnetUnrealizedPnl');
+                    if (mainnetUnPnlEl) {
+                        mainnetUnPnlEl.innerText = (mainnetUnrealizedPnl >= 0 ? '+' : '') + '$' + mainnetUnrealizedPnl.toFixed(2);
+                        mainnetUnPnlEl.style.color = mainnetUnrealizedPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                    }
+                    const testnetUnPnlEl = document.getElementById('testnetUnrealizedPnl');
+                    if (testnetUnPnlEl) {
+                        testnetUnPnlEl.innerText = (testnetUnrealizedPnl >= 0 ? '+' : '') + '$' + testnetUnrealizedPnl.toFixed(2);
+                        testnetUnPnlEl.style.color = testnetUnrealizedPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                    }
+                }
+
+                // 3. Closed Positions & Realized PnL Summary
+                if (closedResp && closedResp.ok) {
+                    const closedData = await closedResp.json();
+                    const stats = closedData.stats || {};
+                    const netPnLVal = stats.total_pnl || 0.0;
+                    const totalClosedCount = stats.total_trades || 0;
+
+                    document.getElementById('closedPositionsCount').innerText = totalClosedCount;
+                    const netRealizedPnlElem = document.getElementById('netRealizedPnl');
+                    if (netRealizedPnlElem) {
+                        netRealizedPnlElem.innerText = (netPnLVal >= 0 ? '+' : '') + '$' + netPnLVal.toFixed(2);
+                        netRealizedPnlElem.style.color = netPnLVal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
                     }
 
-                    const tradeUsd = b.parameters.trade_amount_usd ? `$${parseFloat(b.parameters.trade_amount_usd).toFixed(2)}` : '—';
-                    const leverage = b.parameters.leverage ? `${b.parameters.leverage}x` : '—';
-                    const candleInterval = b.parameters.candle_interval || '—';
-                    const editIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+                    const profitCountVal = stats.profit_count || 0;
+                    const totalProfitVal = stats.profit_sum || 0.0;
+                    const lossCountVal = stats.loss_count || 0;
+                    const totalLossVal = stats.loss_sum || 0.0;
 
-                    return `
-                        <tr id="bot-row-${b.id}" class="${b.position ? 'active-pos-row' : ''}">
-                            <td data-label="Actions">
-                                <div style="display: flex; gap: 0.4rem;">
-                                    <button class="${btnClass}" onclick="toggleBot(${b.id})">${btnLabel}</button>
-                                    <button class="btn-sm-toggle" style="background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid rgba(56,189,248,0.25);" onclick="openEditBot(${b.id})">${editIcon}</button>
-                                    <a class="btn-sm-view" title="View details" href="/bot-info?bot_id=${b.id}" style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2); color: var(--accent-blue); cursor: pointer; text-decoration: none;">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                    </a>
-                                    <button class="btn-sm-delete" title="Delete bot" onclick="deleteBot(${b.id})">${deleteIcon}</button>
-                                </div>
-                            </td>
-                            <td data-label="#ID"><strong style="color: var(--accent-purple)">#${b.id}</strong></td>
-                            <td data-label="Network">${netBadge}</td>
-                            <td data-label="Symbol"><strong>${b.symbol}</strong></td>
-                            <td data-label="Strategy"><span style="font-size: 0.8rem; background: rgba(168,85,247,0.15); color: #d8b4fe; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 600;">${b.strategy_name}</span></td>
-                            <td data-label="Timeframe"><span style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">${candleInterval}</span></td>
-                            <td data-label="Status">
-                                <div class="${statusClass}">
-                                    <div class="light"></div>
-                                    <span>${statusText}</span>
-                                </div>
-                            </td>
-                            <td data-label="Live Price"><strong>${b.latest_price ? '$' + formatPrice(b.latest_price) : '—'}</strong></td>
-                            <td data-label="Leverage">${leverage}</td>
-                            <td data-label="Trade USD">${tradeUsd}</td>
-                            <td data-label="SL %">${b.parameters.stop_loss_pct}%</td>
-                            <td data-label="TP %">${b.parameters.take_profit_pct}%</td>
-                        </tr>
-                    `;
-                }).join('');
+                    document.getElementById('profitCount').innerText = profitCountVal;
+                    document.getElementById('totalProfit').innerText = '+$' + totalProfitVal.toFixed(2);
+                    document.getElementById('lossCount').innerText = lossCountVal;
+                    document.getElementById('totalLoss').innerText = '-$' + totalLossVal.toFixed(2);
+                }
 
-                loadedBots = bots;
+                // Sync total bot counts
+                document.getElementById('totalBotsCount').innerText = totalBotCount;
 
+                // Render paginated bots table
+                renderBotsTable();
             } catch (e) {
                 console.error("Error fetching bots list", e);
             }
@@ -2818,64 +3031,12 @@
 
 
 
-        // Update master equity chart
-        async function updatePnLChart() {
-            try {
-                const periodSelect = document.getElementById('pnlPeriodFilter');
-                const period = periodSelect ? periodSelect.value : '30d';
-                const response = await fetch(apiBase + '/pnl?period=' + period);
-                const data = await response.json();
-
-                const labels = data.map(d => {
-                    if (period === '24h' || period === '48h') {
-                        // Format hourly timestamps nicely
-                        const dateObj = new Date(d.date);
-                        return dateObj.toLocaleDateString(undefined, {month:'short', day:'numeric'}) + ' ' + dateObj.toLocaleTimeString(undefined, {hour: '2-digit', minute:'2-digit', hour12: false});
-                    }
-                    return d.date;
-                });
-                const points = data.map(d => d.total_balance);
-
-                if (!chart) {
-                    const ctx = document.getElementById('pnlChart').getContext('2d');
-                    chart = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: labels,
-                            datasets: [{
-                                label: 'Equity Curve ($)',
-                                data: points,
-                                borderColor: '#a855f7',
-                                backgroundColor: 'rgba(168, 85, 247, 0.1)',
-                                tension: 0.3,
-                                fill: true
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } },
-                                y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } }
-                            },
-                            plugins: {
-                                legend: { display: false }
-                            }
-                        }
-                    });
-                } else {
-                    chart.data.labels = labels;
-                    chart.data.datasets[0].data = points;
-                    chart.update();
-                }
-            } catch (e) {
-                console.error("Error updating equity chart", e);
+        // Refresh loop with reduced frequency (5s) and tab-visibility pause
+        setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                fetchBots();
             }
-        }
-
-        // Refresh loops
-        setInterval(fetchBots, 1000);
-        setInterval(updatePnLChart, 5000);
+        }, 5000);
 
         // Initial setup
         const dbTitle = document.getElementById('mainDashboardTitle');
@@ -2914,7 +3075,6 @@
         updateDeployToggleUI();
         fetchSymbolsConfig();
         fetchBots();
-        updatePnLChart();
         if (window.lucide) {
             window.lucide.createIcons();
         }
