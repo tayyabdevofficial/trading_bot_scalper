@@ -1,0 +1,266 @@
+<style>
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 0.5rem;
+    }
+
+    header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        border-bottom: 1px solid var(--glass-border);
+        padding-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        position: relative;
+    }
+
+    .header-top-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .logo-section h1 {
+        font-size: 2.2rem;
+        font-weight: 700;
+        background: linear-gradient(to right, #38bdf8, #a855f7);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .logo-section p {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        margin-top: 0.25rem;
+    }
+
+    .mobile-nav-toggle-btn {
+        display: none; /* hidden by default on desktop */
+        align-items: center;
+        gap: 0.4rem;
+        background: rgba(30, 41, 59, 0.75);
+        border: 1px solid var(--glass-border);
+        padding: 0.45rem 0.85rem;
+        border-radius: 10px;
+        color: #f8fafc;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: inherit;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    .mobile-nav-toggle-btn:hover,
+    .mobile-nav-toggle-btn.active {
+        background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(168, 85, 247, 0.25));
+        border-color: rgba(168, 85, 247, 0.4);
+        color: #fff;
+    }
+
+    .header-buttons {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .header-btn {
+        background: linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(168, 85, 247, 0.2));
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        padding: 0.6rem 1.1rem;
+        border-radius: 999px;
+        color: var(--text-main);
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.88rem;
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        transition: all 0.25s ease;
+        cursor: pointer;
+        outline: none;
+        font-family: inherit;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+    }
+
+    .header-btn:hover, .header-btn.active {
+        background: linear-gradient(135deg, rgba(56, 189, 248, 0.32), rgba(168, 85, 247, 0.34));
+        border-color: rgba(255, 255, 255, 0.24);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 24px rgba(56, 189, 248, 0.18), 0 8px 24px rgba(168, 85, 247, 0.16);
+        color: #fff;
+    }
+
+    .header-btn-switch {
+        padding: 0.6rem 1.12rem;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.25s ease;
+        border: 1px solid transparent;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
+    }
+
+    .header-btn-switch.live {
+        background: linear-gradient(135deg, rgba(168, 85, 247, 0.24), rgba(236, 72, 153, 0.22));
+        color: #f5d0fe;
+        border-color: rgba(168, 85, 247, 0.35);
+    }
+    .header-btn-switch.live:hover {
+        background: linear-gradient(135deg, var(--accent-purple), #ec4899);
+        color: #fff;
+        transform: translateY(-2px);
+    }
+
+    .header-btn-switch.testnet {
+        background: linear-gradient(135deg, rgba(56, 189, 248, 0.24), rgba(14, 165, 233, 0.22));
+        color: #bae6fd;
+        border-color: rgba(56, 189, 248, 0.35);
+    }
+    .header-btn-switch.testnet:hover {
+        background: linear-gradient(135deg, var(--accent-blue), #0ea5e9);
+        color: #fff;
+        transform: translateY(-2px);
+    }
+
+    @media (max-width: 768px) {
+        header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+            padding-bottom: 1rem;
+        }
+
+        .header-top-bar {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-section {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .logo-section h1 {
+            font-size: 1.45rem;
+        }
+        .logo-section p {
+            font-size: 0.78rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mobile-nav-toggle-btn {
+            display: inline-flex !important;
+            flex-shrink: 0;
+        }
+
+        .header-buttons {
+            display: none !important;
+            width: 100%;
+            flex-direction: column;
+            gap: 0.45rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .header-buttons.mobile-nav-open {
+            display: flex !important;
+            animation: mobileNavFadeIn 0.2s ease forwards;
+        }
+
+        .header-btn,
+        .header-btn-switch {
+            width: 100%;
+            justify-content: flex-start;
+            padding: 0.65rem 1rem;
+            border-radius: 10px;
+        }
+    }
+
+    @keyframes mobileNavFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-6px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+<header>
+    <div class="header-top-bar">
+        <div class="logo-section">
+            <h1><i data-lucide="zap" style="color: var(--accent-purple);"></i> Tayyab Scalper</h1>
+            <p id="headerSubtitle">Advanced Concurrent Multi-Bot &amp; Strategy Management System</p>
+        </div>
+        <button type="button" id="mobileNavToggle" class="mobile-nav-toggle-btn" onclick="toggleMobileNav(event)" aria-label="Toggle Navigation Menu">
+            <span id="mobileNavLabel" style="font-size:0.8rem; font-weight:600;">Menu</span>
+            <i data-lucide="menu" id="mobileNavIcon" style="width: 18px; height: 18px;"></i>
+        </button>
+    </div>
+    <div class="header-buttons" id="mainHeaderButtons">
+        <a href="/" class="header-btn" id="nav-dashboard"><i data-lucide="layout-dashboard"></i> Trading Panel</a>
+        <a href="/bots" class="header-btn" id="nav-bots"><i data-lucide="cpu"></i> Bots Performance</a>
+        <a href="/positions" class="header-btn" id="nav-positions"><i data-lucide="trending-up"></i> Active Positions</a>
+        <a href="/closed-positions" class="header-btn" id="nav-closed"><i data-lucide="check-circle"></i> Closed Positions</a>
+        <a href="/binance-logs" class="header-btn" id="nav-binance-logs"><i data-lucide="file-text"></i> Binance Logs</a>
+        <a href="/scanner" class="header-btn" id="nav-scanner"><i data-lucide="grid"></i> Market Scanner</a>
+        <a href="/backtest" class="header-btn" id="nav-backtest"><i data-lucide="bar-chart-2"></i> Backtest Data</a>
+        
+        <!-- Dashboard only / conditional buttons -->
+        <button onclick="openSymbolModal()" class="header-btn" id="adminBtnSymbols" style="display: none;"><i data-lucide="settings"></i> Symbols</button>
+        <button id="adminBtnChangePw" onclick="openChangePasswordModal()" style="display: none;" class="header-btn"><i data-lucide="key"></i> Change PW</button>
+        <button id="adminBtnLogout" onclick="handleLogout()" style="display: none;" class="header-btn"><i data-lucide="log-out"></i> Logout</button>
+    </div>
+</header>
+<script>
+    function toggleMobileNav(e) {
+        if (e) e.stopPropagation();
+        const nav = document.getElementById('mainHeaderButtons');
+        const icon = document.getElementById('mobileNavIcon');
+        const btn = document.getElementById('mobileNavToggle');
+        const lbl = document.getElementById('mobileNavLabel');
+        if (!nav) return;
+        const isOpen = nav.classList.toggle('mobile-nav-open');
+        if (btn) btn.classList.toggle('active', isOpen);
+        if (lbl) lbl.textContent = isOpen ? 'Close' : 'Menu';
+        if (icon) {
+            icon.setAttribute('data-lucide', isOpen ? 'x' : 'menu');
+            if (window.lucide) lucide.createIcons();
+        }
+    }
+
+    // Auto-close on screen resize to desktop
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 768) {
+            const nav = document.getElementById('mainHeaderButtons');
+            const btn = document.getElementById('mobileNavToggle');
+            const icon = document.getElementById('mobileNavIcon');
+            const lbl = document.getElementById('mobileNavLabel');
+            if (nav) nav.classList.remove('mobile-nav-open');
+            if (btn) btn.classList.remove('active');
+            if (lbl) lbl.textContent = 'Menu';
+            if (icon) {
+                icon.setAttribute('data-lucide', 'menu');
+                if (window.lucide) lucide.createIcons();
+            }
+        }
+    });
+</script>

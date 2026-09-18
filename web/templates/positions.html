@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Active Positions - Trading Panel</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-grad-start: #0b0f19;
+            --bg-grad-end: #030712;
+            --glass-bg: rgba(17, 24, 39, 0.55);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --accent-blue: #38bdf8;
+            --accent-purple: #a855f7;
+            --accent-green: #10b981;
+            --accent-red: #f43f5e;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, var(--bg-grad-start), var(--bg-grad-end));
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 0.5rem;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            padding: 1.5rem;
+        }
+
+        .btn-back {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 0.6rem 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .btn-back:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(-2px);
+        }
+
+        /* Table */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 1rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        td {
+            padding: 1.2rem 1rem;
+            font-size: 0.95rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .badge-buy {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-sell {
+            background: rgba(244, 63, 94, 0.15);
+            color: var(--accent-red);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .pnl-text {
+            font-weight: 700;
+        }
+        .pnl-text.pos { color: var(--accent-green); }
+        .pnl-text.neg { color: var(--accent-red); }
+
+        .no-positions {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 3rem;
+            font-style: italic;
+        }
+        
+        /* Bot Details Modal CSS */
+        .detail-section {
+            margin-bottom: 1.5rem;
+        }
+        .detail-section h4 {
+            color: var(--accent-purple);
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.25rem;
+        }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem 1.5rem;
+        }
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+        .detail-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        .detail-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+        .position-detail-card {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- WIDGET: header.html -->
+
+
+
+        <!-- Positions Table Card -->
+        <div class="glass-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="activity" style="color: var(--accent-blue); width: 20px; height: 20px;"></i>
+                    <h2 style="font-size: 1.25rem; font-weight: 600; margin: 0;">Active Open Positions</h2>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.6rem;">
+                    <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Environment:</span>
+                    <select id="posNetworkFilter" onchange="fetchPositions()" style="padding: 0.35rem 0.75rem; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(15, 23, 42, 0.8); color: #f8fafc; font-size: 0.85rem; font-weight: 600; font-family: inherit;">
+                        <option value="all">All Environments</option>
+                        <option value="mainnet">🟢 Mainnet</option>
+                        <option value="testnet">🔵 Testnet</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Open Time (PKT)</th>
+                            <th>Bot ID</th>
+                            <th>Network</th>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Qty / Size ($)</th>
+                            <th>Entry / Current Price</th>
+                            <th>Stop Loss</th>
+                            <th>Take Profit</th>
+                            <th>Status / Alerts</th>
+                            <th>Released / Unrealized PnL ($)</th>
+                            <th>Total PnL ($)</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="positionsBody">
+                        <tr>
+                            <td colspan="13" class="no-positions">Loading active positions...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- WIDGET: bot_detail_modal.html -->
+
+    <script>
+        const IS_ADMIN = false;
+        const IS_TESTNET = false;
+        const apiBase = (typeof IS_TESTNET !== 'undefined' && IS_TESTNET) ? '/api' : (IS_ADMIN ? '/api/admin' : '/api');
+
+
+        lucide.createIcons();
+
+        let loadedBots = [];
+
+        function formatPrice(val) {
+            if (val === undefined || val === null || isNaN(val) || Number(val) === 0) return '—';
+            // strip trailing zeros by converting to float after fixing precision to 10 decimals
+            return parseFloat(Number(val).toFixed(10)).toString();
+        }
+
+
+        async function fetchPositions() {
+            try {
+                const response = await fetch(apiBase + '/bots');
+                const bots = await response.json();
+                loadedBots = bots;
+                
+                const allOpenPositions = [];
+                bots.forEach(b => {
+                    if (!b.position) return;
+                    const positions = Array.isArray(b.position) ? b.position : [b.position];
+                    positions.forEach(pos => {
+                        allOpenPositions.push({
+                            bot: b,
+                            pos: pos
+                        });
+                    });
+                });
+
+                const tbody = document.getElementById('positionsBody');
+
+                const netFilter = document.getElementById('posNetworkFilter')?.value || 'all';
+                let filteredPositions = allOpenPositions;
+                if (netFilter !== 'all') {
+                    filteredPositions = allOpenPositions.filter(({ bot: b }) => (b.network || 'mainnet').toLowerCase() === netFilter.toLowerCase());
+                }
+
+                if (filteredPositions.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="13" class="no-positions" style="text-align: center; padding: 2rem; color: var(--text-muted);">No open positions across any running bots currently${netFilter !== 'all' ? ' on ' + netFilter : ''}.</td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                // Sort by open time (timestamp) desc
+                filteredPositions.sort((a, b) => {
+                    const tsA = a.pos.timestamp ? new Date(a.pos.timestamp).getTime() : 0;
+                    const tsB = b.pos.timestamp ? new Date(b.pos.timestamp).getTime() : 0;
+                    return tsB - tsA;
+                });
+
+                tbody.innerHTML = filteredPositions.map(({ bot: b, pos }) => {
+                    let pnl = 0.0;
+                    if (b.latest_price > 0) {
+                        if (pos.side === 'BUY') {
+                            pnl = (b.latest_price - pos.entry_price) * pos.qty;
+                        } else {
+                            pnl = (pos.entry_price - b.latest_price) * pos.qty;
+                        }
+                    }
+
+                    const sizeWithLev = pos.entry_price * pos.qty;
+                    
+                    const isMainnet = (b.network || 'mainnet').toLowerCase() === 'mainnet';
+                    const netBadge = isMainnet
+                        ? `<span style="font-size:0.72rem;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(34,197,94,0.3);letter-spacing:0.5px;">MAINNET</span>`
+                        : `<span style="font-size:0.72rem;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);letter-spacing:0.5px;">TESTNET</span>`;
+
+                    const displaySide = pos.side === 'BUY' ? 'LONG' : 'SHORT';
+                    const sideClass = pos.side === 'BUY' ? 'badge-buy' : 'badge-sell';
+                    const pnlClass = pnl >= 0 ? 'pnl-text pos' : 'pnl-text neg';
+                    const formattedPnl = pnl >= 0 ? `+$${pnl.toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`;
+
+                    const releasedPnl = pos.released_pnl || 0.0;
+                    const totalPnl = pnl + releasedPnl;
+                    
+                    const releasedPnlClass = releasedPnl >= 0 ? 'pnl-text pos' : 'pnl-text neg';
+                    const formattedReleasedPnl = releasedPnl >= 0 ? `+$${releasedPnl.toFixed(2)}` : `-$${Math.abs(releasedPnl).toFixed(2)}`;
+                    
+                    const totalPnlClass = totalPnl >= 0 ? 'pnl-text pos' : 'pnl-text neg';
+                    const formattedTotalPnl = totalPnl >= 0 ? `+$${totalPnl.toFixed(2)}` : `-$${Math.abs(totalPnl).toFixed(2)}`;
+
+                    let tpDisplay = pos.tp_price ? '$' + formatPrice(pos.tp_price) : '-';
+                    if (pos.tp_targets && pos.tp_targets.length > 0) {
+                        const hitCount = pos.tp_targets.filter(t => t.hit).length;
+                        tpDisplay = `<span style="color: var(--accent-green); cursor: pointer; text-decoration: underline;" onclick="showTpTargetsModal('${b.symbol}', '${pos.side}', ${JSON.stringify(pos.tp_targets).replace(/"/g, '&quot;')})">${hitCount}/${pos.tp_targets.length} targets hit</span>`;
+                    }
+
+                    // Format timestamp to Pakistan Time (GMT+5)
+                    let openTimeDisplay = '—';
+                    if (pos.timestamp) {
+                        try {
+                            const utcDate = new Date(pos.timestamp);
+                            // Format specifically to Asia/Karachi (Pakistan Time)
+                            openTimeDisplay = utcDate.toLocaleString("en-US", { timeZone: "Asia/Karachi" });
+                        } catch (e) {
+                            openTimeDisplay = pos.timestamp;
+                        }
+                    }
+
+                    // Status Alert Badge & Retry Button
+                    let alertBadge = '<span style="color: var(--text-muted); font-size: 0.8rem;">Standard</span>';
+                    if (pos.status === 'TP_ORDERS_FAILED') {
+                        alertBadge = `
+                            <div style="display:flex; flex-direction:column; gap:0.35rem; align-items:flex-start;">
+                                <span style="background:rgba(244,63,94,0.15); color:var(--accent-red); padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:700;">⚠ TP ORDERS FAILED</span>
+                                <button onclick="retryTpOrders(${b.id}, this)" style="background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.3); border-radius:4px; padding:0.2rem 0.4rem; font-size:0.72rem; color:var(--accent-blue); font-weight:600; cursor:pointer; font-family:inherit;">Retry TP</button>
+                            </div>
+                        `;
+                    } else if (pos.status) {
+                        alertBadge = `<span style="background:rgba(245,158,11,0.15); color:var(--accent-yellow); padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:700;">${pos.status}</span>`;
+                    }
+
+                    return `
+                        <tr>
+                            <td data-label="Open Time">${openTimeDisplay}</td>
+                            <td data-label="Bot ID"><a href="/bot-info?bot_id=${b.id}" target="_blank" style="color: var(--accent-purple); font-weight: 700; text-decoration: underline;">#${b.id} (${b.strategy_name})</a></td>
+                            <td data-label="Network">${netBadge}</td>
+                            <td data-label="Symbol"><strong>${b.symbol}</strong></td>
+                            <td data-label="Side"><span class="${sideClass}">${displaySide}</span></td>
+                            <td data-label="Qty / Size">${pos.qty} units / $${sizeWithLev.toFixed(2)}</td>
+                            <td data-label="Entry / Current">$${formatPrice(pos.entry_price)} / $${b.latest_price ? formatPrice(b.latest_price) : '—'}</td>
+                            <td data-label="Stop Loss">$${pos.sl_price ? formatPrice(pos.sl_price) : '-'}</td>
+                            <td data-label="Take Profit">${tpDisplay}</td>
+                            <td data-label="Status / Alerts">${alertBadge}</td>
+                            <td data-label="Released / Unrealized PnL ($)">
+                                <span class="${releasedPnlClass}">${formattedReleasedPnl}</span> / <span class="${pnlClass}">${formattedPnl}</span>
+                            </td>
+                            <td data-label="Total PnL ($)"><span class="${totalPnlClass}">${formattedTotalPnl}</span></td>
+                            <td data-label="Action">
+                                <button class="btn-close-pos" onclick="closePosition(${b.id}, '${b.symbol}', this)" style="background: rgba(244,63,94,0.15); border: 1px solid rgba(244,63,94,0.3); border-radius: 6px; padding: 0.4rem 0.8rem; font-size: 0.85rem; color: var(--accent-red); font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit;" onmouseover="this.style.background='rgba(244,63,94,0.25)'" onmouseout="this.style.background='rgba(244,63,94,0.15)'">
+                                    Close
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+
+            } catch (e) {
+                console.error("Error fetching open positions", e);
+            }
+        }
+
+        async function showBotDetailsById(id) {
+            const bot = loadedBots.find(b => b.id === id);
+            if (!bot) return;
+
+            const modal = document.getElementById('botDetailModal');
+            const content = document.getElementById('botDetailContent');
+            
+            // Build parameters HTML
+            let paramsHtml = '';
+            for (const [key, val] of Object.entries(bot.parameters)) {
+                if (['leverage', 'trade_amount_usd', 'stop_loss_pct', 'take_profit_pct', 'candle_interval', 'use_mtf_filter', 'use_atr_stops', 'use_chop_filter', 'hedge_mode'].includes(key)) {
+                    continue;
+                }
+                paramsHtml += `
+                    <div class="detail-item">
+                        <span class="detail-label">${key.replace(/_/g, ' ').toUpperCase()}</span>
+                        <span class="detail-value">${val}</span>
+                    </div>
+                `;
+            }
+            if (!paramsHtml) paramsHtml = '<div style="color: var(--text-muted); font-size: 0.85rem; grid-column: span 2;">No strategy-specific parameters.</div>';
+
+            // Build active positions HTML
+            let positionsHtml = '';
+            if (bot.position && bot.position.length > 0) {
+                const positions = Array.isArray(bot.position) ? bot.position : [bot.position];
+                positions.forEach((pos, index) => {
+                    const sideClass = pos.side === 'BUY' ? 'badge-buy' : 'badge-sell';
+                    let pnl = 0.0;
+                    if (bot.latest_price > 0) {
+                        if (pos.side === 'BUY') {
+                            pnl = (bot.latest_price - pos.entry_price) * pos.qty;
+                        } else {
+                            pnl = (pos.entry_price - bot.latest_price) * pos.qty;
+                        }
+                    }
+                    const pnlSign = pnl >= 0 ? '+' : '';
+                    const pnlClass = pnl >= 0 ? 'pnl-text pos' : 'pnl-text neg';
+                    
+                    positionsHtml += `
+                        <div class="position-detail-card" style="margin-top: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 0.35rem;">
+                                <span class="${sideClass}" style="padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700; font-size: 0.75rem;">${pos.side}</span>
+                                <span class="${pnlClass}" style="font-size: 1rem; font-weight: 700;">${pnlSign}$${pnl.toFixed(2)}</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; font-size: 0.85rem;">
+                                <div class="detail-item">
+                                    <span class="detail-label">Qty</span>
+                                    <span class="detail-value">${pos.qty}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Entry Price</span>
+                                    <span class="detail-value">$${formatPrice(pos.entry_price)}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Est. Margin</span>
+                                    <span class="detail-value">$${((pos.entry_price * pos.qty) / (bot.parameters.leverage || 10)).toFixed(2)}</span>
+                                </div>
+                                <div class="detail-item" style="margin-top: 0.4rem;">
+                                    <span class="detail-label">Stop Loss</span>
+                                    <span class="detail-value" style="color: var(--accent-red); font-weight:600;">${pos.sl_price > 0 ? '$' + formatPrice(pos.sl_price) : 'None'}</span>
+                                </div>
+                                <div class="detail-item" style="margin-top: 0.4rem;">
+                                    <span class="detail-label">Age</span>
+                                    <span class="detail-value">${formatAge(pos.timestamp)}</span>
+                                </div>
+                                ${pos.tp_targets && pos.tp_targets.length > 0 ? `
+                                <div class="detail-item" style="grid-column: span 3; margin-top: 0.4rem;">
+                                    <span class="detail-label" style="margin-bottom: 0.2rem; display: block;">TP Split Targets (${pos.tp_targets.filter(t => t.hit).length}/${pos.tp_targets.length} hit)</span>
+                                    <div style="display: flex; flex-direction: column; gap: 0.35rem; background: rgba(0,0,0,0.3); padding: 0 0.5rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                                        ${pos.tp_targets.map(t => {
+                                            const statusStyle = t.hit ? 'color: var(--accent-green); font-weight: 700;' : 'color: var(--text-muted);';
+                                            const statusLabel = t.hit ? '✔ HIT' : 'PENDING';
+                                            return `
+                                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem;">
+                                                    <span>Target: <strong style="color: #f8fafc;">$${formatPrice(t.target_price)}</strong> (Qty: ${t.qty})</span>
+                                                    <span style="${statusStyle}">${statusLabel} (${t.pct}% closed)</span>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                </div>
+                                ` : `
+                                <div class="detail-item" style="margin-top: 0.4rem;">
+                                    <span class="detail-label">Take Profit</span>
+                                    <span class="detail-value" style="color: var(--accent-green); font-weight:600;">${pos.tp_price > 0 ? '$' + formatPrice(pos.tp_price) : 'None'}</span>
+                                </div>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                positionsHtml = '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 0.5rem 0;">No active position.</div>';
+            }
+
+            content.innerHTML = `
+                <div class="detail-section">
+                    <h4>Core Configuration</h4>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">Bot ID</span>
+                            <span class="detail-value" style="color: var(--accent-purple);">#${bot.id}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Symbol</span>
+                            <span class="detail-value" style="color: #f8fafc; font-weight:700;">${bot.symbol}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Strategy</span>
+                            <span class="detail-value">${bot.strategy_name}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Timeframe</span>
+                            <span class="detail-value" style="font-family: 'JetBrains Mono', monospace;">${bot.parameters.candle_interval || '—'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Status</span>
+                            <span class="detail-value" style="color: ${bot.is_running ? 'var(--accent-green)' : 'var(--accent-red)'}; font-weight: 700;">${bot.is_running ? 'RUNNING' : 'STOPPED'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Latest Price</span>
+                            <span class="detail-value">${bot.latest_price ? '$' + formatPrice(bot.latest_price) : '—'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h4>Risk &amp; Leverage Settings</h4>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">Leverage</span>
+                            <span class="detail-value">${bot.parameters.leverage || 10}x</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Trade Amount (USD)</span>
+                            <span class="detail-value">$${parseFloat(bot.parameters.trade_amount_usd || 0).toFixed(2)}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Stop Loss %</span>
+                            <span class="detail-value">${bot.parameters.stop_loss_pct}%</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Take Profit %</span>
+                            <span class="detail-value">${bot.parameters.take_profit_pct}%</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">MTF Filter</span>
+                            <span class="detail-value">${bot.parameters.use_mtf_filter ? 'ENABLED' : 'DISABLED'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Chop Filter</span>
+                            <span class="detail-value">${bot.parameters.use_chop_filter ? 'ENABLED' : 'DISABLED'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Trigger Mode</span>
+                            <span class="detail-value" style="color: var(--accent-blue); font-weight: 600;">Candle Close</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h4>Strategy Parameters</h4>
+                    <div class="detail-grid">
+                        ${paramsHtml}
+                    </div>
+                </div>
+
+                <div class="detail-section" style="margin-bottom: 0;">
+                    <h4>Active Position(s) Details</h4>
+                    ${positionsHtml}
+                </div>
+            `;
+
+            modal.style.display = 'flex';
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        }
+
+        function formatAge(isoString) {
+            if (!isoString) return '—';
+            try {
+                const diffMs = new Date() - new Date(isoString);
+                const diffMins = Math.floor(diffMs / 60000);
+                if (diffMins < 1) return 'Just now';
+                if (diffMins < 60) return `${diffMins}m ago`;
+                const diffHours = Math.floor(diffMins / 60);
+                return `${diffHours}h ${diffMins % 60}m ago`;
+            } catch (e) {
+                return '—';
+            }
+        }
+
+        function closeBotDetails() {
+            document.getElementById('botDetailModal').style.display = 'none';
+        }
+
+        function showTpTargetsModal(symbol, side, targets) {
+            const modal = document.getElementById('tpTargetsModal');
+            const title = document.getElementById('tpModalTitle');
+            const content = document.getElementById('tpModalContent');
+            
+            title.textContent = `Take Profit Targets — ${symbol} (${side})`;
+            
+            let targetsHtml = `
+                <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                    ${targets.map((t, idx) => {
+                        const hitStyle = t.hit ? 'color: var(--accent-green); font-weight:700;' : 'color: var(--text-muted);';
+                        const hitIcon = t.hit ? '✔ HIT' : 'PENDING';
+                        return `
+                            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:0.75rem 1rem; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+                                <span>Target #${idx+1}: <strong style="color:#f8fafc;">$${formatPrice(t.target_price)}</strong></span>
+                                <span style="${hitStyle}">${hitIcon} (${t.pct}% qty)</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+            
+            content.innerHTML = targetsHtml;
+            modal.style.display = 'flex';
+        }
+
+        function closeTpTargetsModal() {
+            document.getElementById('tpTargetsModal').style.display = 'none';
+        }
+
+        async function retryTpOrders(botId, btnEl) {
+            btnEl.disabled = true;
+            btnEl.textContent = 'Retrying...';
+            try {
+                const resp = await fetch(apiBase + `/bots/${botId}/retry-tp`, {
+                    method: 'POST'
+                });
+                const data = await resp.json();
+                if (resp.ok && data.status === 'success') {
+                    alert('TP Limit Orders successfully placed on Binance!');
+                    fetchPositions();
+                } else {
+                    alert('Failed to place TP orders: ' + (data.detail || 'Binance rate limit or API issue.'));
+                    btnEl.disabled = false;
+                    btnEl.textContent = 'Retry TP';
+                }
+            } catch(e) {
+                alert('Connection/Server error: ' + e);
+                btnEl.disabled = false;
+                btnEl.textContent = 'Retry TP';
+            }
+        }
+
+        async function closePosition(botId, symbol, btnEl) {
+            if (!confirm(`Are you sure you want to close the active position for Bot #${botId} (${symbol}) manually?`)) {
+                return;
+            }
+            btnEl.disabled = true;
+            btnEl.textContent = 'Closing...';
+            try {
+                const resp = await fetch(apiBase + `/bots/${botId}/close-position`, {
+                    method: 'POST'
+                });
+                const data = await resp.json();
+                if (resp.ok && data.status === 'success') {
+                    alert(`Position for Bot #${botId} closed successfully!`);
+                    fetchPositions();
+                } else {
+                    alert('Failed to close position: ' + (data.detail || 'Server error.'));
+                    btnEl.disabled = false;
+                    btnEl.textContent = 'Close';
+                }
+            } catch(e) {
+                alert('Connection/Server error: ' + e);
+                btnEl.disabled = false;
+                btnEl.textContent = 'Close';
+            }
+        }
+
+        // Highlight active navbar tab & subtitle
+        const currentPath = window.location.pathname;
+        const headerSubtitle = document.getElementById('headerSubtitle');
+        if (headerSubtitle) {
+            headerSubtitle.textContent = 'Real-time open exposures and margin requirements across all running bot instances';
+        }
+        document.title = "Active Positions - Trading Panel";
+
+        document.querySelectorAll('.header-btn').forEach(btn => btn.classList.remove('active'));
+        if (currentPath.includes('/bots')) {
+            document.getElementById('nav-bots')?.classList.add('active');
+        } else if (currentPath.includes('/positions')) {
+            document.getElementById('nav-positions')?.classList.add('active');
+        } else if (currentPath.includes('/closed-positions')) {
+            document.getElementById('nav-closed')?.classList.add('active');
+        } else if (currentPath.includes('/scanner')) {
+            document.getElementById('nav-scanner')?.classList.add('active');
+        } else {
+            document.getElementById('nav-dashboard')?.classList.add('active');
+        }
+
+
+
+        // Auto refresh
+        setInterval(fetchPositions, 1000);
+        fetchPositions();
+    </script>
+
+
+    <!-- WIDGET: tp_targets_modal.html -->
+</body>
+</html>

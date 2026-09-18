@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binance Orders &amp; API Calls Log</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-grad-start: #0b0f19;
+            --bg-grad-end: #030712;
+            --glass-bg: rgba(17, 24, 39, 0.55);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --accent-blue: #38bdf8;
+            --accent-purple: #a855f7;
+            --accent-green: #10b981;
+            --accent-red: #f43f5e;
+            --accent-yellow: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, var(--bg-grad-start), var(--bg-grad-end));
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 0.5rem;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stat-val {
+            font-size: 1.6rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stat-lbl {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        /* Filters Bar */
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .filter-group label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 0.6rem 0.9rem;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 0.88rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+        }
+
+        .actions-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-action {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 0.55rem 1rem;
+            color: var(--text-main);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-action:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateY(-1px);
+        }
+
+        .btn-action.active-pulse {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        /* Logs Table / Cards */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        td {
+            padding: 0.9rem 1rem;
+            font-size: 0.88rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            vertical-align: middle;
+        }
+
+        tr.log-row:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.2rem 0.55rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+
+        .badge-mainnet {
+            background: rgba(168, 85, 247, 0.16);
+            color: #d8b4fe;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+        }
+
+        .badge-testnet {
+            background: rgba(56, 189, 248, 0.16);
+            color: #7dd3fc;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.14);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-error {
+            background: rgba(244, 63, 94, 0.14);
+            color: var(--accent-red);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+        }
+
+        .badge-action {
+            background: rgba(255, 255, 255, 0.06);
+            color: #f1f5f9;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Expandable Payload Viewer */
+        .payload-preview {
+            max-width: 320px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .expand-btn {
+            background: none;
+            border: none;
+            color: var(--accent-blue);
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+        }
+
+        .expand-btn:hover {
+            background: rgba(56, 189, 248, 0.1);
+        }
+
+        .payload-detail-row {
+            background: rgba(10, 15, 29, 0.95);
+            display: none;
+        }
+
+        .payload-detail-row.open {
+            display: table-row;
+        }
+
+        .payload-box {
+            padding: 1.2rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .payload-box pre {
+            background: rgba(3, 7, 18, 0.85);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 0.85rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            color: #e2e8f0;
+            overflow-x: auto;
+            max-height: 250px;
+        }
+
+        .payload-title {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-bottom: 0.4rem;
+            text-transform: uppercase;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- WIDGET: header.html -->
+
+        <!-- Top Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(56, 189, 248, 0.15); color: var(--accent-blue);">
+                    <i data-lucide="activity"></i>
+                </div>
+                <div>
+                    <div class="stat-val" id="statTotalCalls">0</div>
+                    <div class="stat-lbl">Total Logged API Calls</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-green);">
+                    <i data-lucide="check-circle-2"></i>
+                </div>
+                <div>
+                    <div class="stat-val" id="statSuccessCalls" style="color: var(--accent-green);">0</div>
+                    <div class="stat-lbl">Successful (200 OK)</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(244, 63, 94, 0.15); color: var(--accent-red);">
+                    <i data-lucide="alert-triangle"></i>
+                </div>
+                <div>
+                    <div class="stat-val" id="statErrorCalls" style="color: var(--accent-red);">0</div>
+                    <div class="stat-lbl">Errors / Rejections</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(168, 85, 247, 0.15); color: var(--accent-purple);">
+                    <i data-lucide="cpu"></i>
+                </div>
+                <div>
+                    <div class="stat-val" id="statOrdersCount" style="color: var(--accent-purple);">0</div>
+                    <div class="stat-lbl">Market &amp; Limit Orders</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter & Search Controls -->
+        <div class="glass-card">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="filterNetwork"><i data-lucide="globe" style="width: 12px; height: 12px; display: inline;"></i> Network</label>
+                    <select id="filterNetwork" onchange="applyFilters()">
+                        <option value="all">All Networks</option>
+                        <option value="mainnet">Mainnet (Live)</option>
+                        <option value="testnet">Testnet (Simulation)</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterStatus"><i data-lucide="shield" style="width: 12px; height: 12px; display: inline;"></i> Status</label>
+                    <select id="filterStatus" onchange="applyFilters()">
+                        <option value="all">All Statuses</option>
+                        <option value="success">Success (200 OK)</option>
+                        <option value="error">Error / Failed Only</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterAction"><i data-lucide="zap" style="width: 12px; height: 12px; display: inline;"></i> Action Type</label>
+                    <select id="filterAction" onchange="applyFilters()">
+                        <option value="all">All Actions</option>
+                        <option value="NEW_ORDER">New Market Order</option>
+                        <option value="PLACE_TP_LIMIT">Take Profit Limit Order</option>
+                        <option value="CANCEL_ORDER">Cancel Order</option>
+                        <option value="CLOSE_POSITION">Close Position</option>
+                        <option value="SET_LEVERAGE">Set Leverage</option>
+                        <option value="QUERY_ACCOUNT">Account / Balance Query</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="filterSymbol"><i data-lucide="coins" style="width: 12px; height: 12px; display: inline;"></i> Symbol</label>
+                    <input type="text" id="filterSymbol" placeholder="e.g. BTCUSDT" oninput="applyFilters()">
+                </div>
+                <div class="filter-group">
+                    <label for="filterSearch"><i data-lucide="search" style="width: 12px; height: 12px; display: inline;"></i> Search Logs</label>
+                    <input type="text" id="filterSearch" placeholder="Search order ID, endpoint, error..." oninput="applyFilters()">
+                </div>
+            </div>
+            <div class="actions-row">
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button id="btnAutoRefresh" class="btn-action active-pulse" onclick="toggleAutoRefresh()">
+                        <i data-lucide="radio"></i> Live Stream: ON
+                    </button>
+                    <button class="btn-action" onclick="fetchLogs()">
+                        <i data-lucide="refresh-cw"></i> Refresh
+                    </button>
+                    <button class="btn-action" onclick="resetFilters()">
+                        <i data-lucide="x"></i> Reset Filters
+                    </button>
+                </div>
+                <div>
+                    <a href="/api/binance-logs/raw" target="_blank" class="btn-action">
+                        <i data-lucide="download"></i> Download binance_orders.log
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Table -->
+        <div class="glass-card">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Network</th>
+                            <th>Bot #ID</th>
+                            <th>Action &amp; Method</th>
+                            <th>Symbol</th>
+                            <th>Endpoint</th>
+                            <th>HTTP Status</th>
+                            <th>Request / Response</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody">
+                        <tr>
+                            <td colspan="8" class="empty-state">Loading Binance order API calls...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const IS_ADMIN = false;
+        const IS_TESTNET = false;
+        const apiBase = (typeof IS_TESTNET !== 'undefined' && IS_TESTNET) ? '/api' : (IS_ADMIN ? '/api/admin' : '/api');
+
+        let rawLogs = [];
+        let autoRefreshInterval = null;
+        let isAutoRefreshActive = true;
+
+        lucide.createIcons();
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchLogs();
+            startAutoRefresh();
+        });
+
+        async function fetchLogs() {
+            try {
+                const network = document.getElementById('filterNetwork').value;
+                const status = document.getElementById('filterStatus').value;
+                const action = document.getElementById('filterAction').value;
+                const symbol = document.getElementById('filterSymbol').value.trim();
+                const search = document.getElementById('filterSearch').value.trim();
+
+                const params = new URLSearchParams();
+                if (network !== 'all') params.append('network', network);
+                if (status === 'error') params.append('is_error', 'true');
+                if (status === 'success') params.append('is_error', 'false');
+                if (action !== 'all') params.append('action', action);
+                if (symbol) params.append('symbol', symbol);
+                if (search) params.append('search', search);
+                params.append('limit', '150');
+
+                const resp = await fetch(`/api/binance-logs?${params.toString()}`);
+                if (resp.ok) {
+                    rawLogs = await resp.json();
+                    renderLogs(rawLogs);
+                    updateStats(rawLogs);
+                }
+            } catch (err) {
+                console.error("Error fetching Binance logs:", err);
+            }
+        }
+
+        function updateStats(logs) {
+            const total = logs.length;
+            const errors = logs.filter(l => l.is_error || (l.response_status && l.response_status >= 400)).length;
+            const success = total - errors;
+            const orders = logs.filter(l => l.action && (l.action.includes('ORDER') || l.action.includes('CLOSE'))).length;
+
+            document.getElementById('statTotalCalls').innerText = total;
+            document.getElementById('statSuccessCalls').innerText = success;
+            document.getElementById('statErrorCalls').innerText = errors;
+            document.getElementById('statOrdersCount').innerText = orders;
+        }
+
+        function renderLogs(logs) {
+            const tbody = document.getElementById('logsTableBody');
+            if (!logs || logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No Binance API order calls found matching the selected filters.</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            logs.forEach(log => {
+                const isErr = log.is_error || (log.response_status && log.response_status >= 400);
+                const netBadge = log.network === 'testnet' 
+                    ? `<span class="badge badge-testnet"><i data-lucide="flask-conical" style="width:11px;height:11px;"></i> TESTNET</span>`
+                    : `<span class="badge badge-mainnet"><i data-lucide="shield-check" style="width:11px;height:11px;"></i> MAINNET</span>`;
+                
+                const statusBadge = isErr
+                    ? `<span class="badge badge-error"><i data-lucide="x-circle" style="width:11px;height:11px;"></i> ${log.response_status || 'ERROR'}</span>`
+                    : `<span class="badge badge-success"><i data-lucide="check" style="width:11px;height:11px;"></i> ${log.response_status || '200 OK'}</span>`;
+
+                const actionBadge = `<span class="badge badge-action">${log.method || 'POST'} ${log.action || 'CALL'}</span>`;
+
+                let reqPretty = '';
+                let resPretty = '';
+                try {
+                    const reqObj = typeof log.request_payload === 'string' ? JSON.parse(log.request_payload) : log.request_payload;
+                    reqPretty = JSON.stringify(reqObj, null, 2);
+                } catch(e) { reqPretty = log.request_payload || '—'; }
+
+                try {
+                    const resObj = typeof log.response_payload === 'string' ? JSON.parse(log.response_payload) : log.response_payload;
+                    resPretty = JSON.stringify(resObj, null, 2);
+                } catch(e) { resPretty = log.response_payload || '—'; }
+
+                const rowId = `detail-${log.id}`;
+
+                html += `
+                    <tr class="log-row">
+                        <td class="mono" style="font-size:0.8rem; color:var(--text-muted);">${log.timestamp || '—'}</td>
+                        <td>${netBadge}</td>
+                        <td class="mono">${log.bot_id ? `#${log.bot_id}` : '—'}</td>
+                        <td>${actionBadge}</td>
+                        <td class="mono" style="font-weight:700; color:var(--accent-blue);">${log.symbol || '—'}</td>
+                        <td class="mono" style="font-size:0.8rem;">${log.endpoint || '—'}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <button class="expand-btn" onclick="toggleDetail('${rowId}')">
+                                <i data-lucide="code-2" style="width:14px;height:14px;"></i> View JSON
+                            </button>
+                        </td>
+                    </tr>
+                    <tr id="${rowId}" class="payload-detail-row">
+                        <td colspan="8">
+                            <div class="payload-box">
+                                <div>
+                                    <div class="payload-title">Request Payload &amp; Parameters</div>
+                                    <pre>${escapeHtml(reqPretty)}</pre>
+                                </div>
+                                <div>
+                                    <div class="payload-title">Binance Response Data</div>
+                                    <pre>${escapeHtml(resPretty)}</pre>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        function toggleDetail(id) {
+            const row = document.getElementById(id);
+            if (row) {
+                row.classList.toggle('open');
+            }
+        }
+
+        function applyFilters() {
+            fetchLogs();
+        }
+
+        function resetFilters() {
+            document.getElementById('filterNetwork').value = 'all';
+            document.getElementById('filterStatus').value = 'all';
+            document.getElementById('filterAction').value = 'all';
+            document.getElementById('filterSymbol').value = '';
+            document.getElementById('filterSearch').value = '';
+            fetchLogs();
+        }
+
+        function toggleAutoRefresh() {
+            const btn = document.getElementById('btnAutoRefresh');
+            if (isAutoRefreshActive) {
+                clearInterval(autoRefreshInterval);
+                isAutoRefreshActive = false;
+                btn.className = 'btn-action';
+                btn.innerHTML = `<i data-lucide="play"></i> Live Stream: PAUSED`;
+            } else {
+                startAutoRefresh();
+                btn.className = 'btn-action active-pulse';
+                btn.innerHTML = `<i data-lucide="radio"></i> Live Stream: ON`;
+            }
+            lucide.createIcons();
+        }
+
+        function startAutoRefresh() {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = setInterval(fetchLogs, 3000);
+            isAutoRefreshActive = true;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>

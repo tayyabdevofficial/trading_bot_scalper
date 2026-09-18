@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Tayyab Scalper</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-start: #070b14;
+            --bg-end:   #030712;
+            --glass-bg: rgba(13, 19, 33, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.07);
+            --accent: #a855f7;
+            --accent2: #38bdf8;
+            --accent-glow: rgba(168, 85, 247, 0.25);
+            --text: #f1f5f9;
+            --muted: #64748b;
+            --input-bg: rgba(8, 12, 24, 0.7);
+            --input-border: rgba(255,255,255,0.09);
+            --error: #f43f5e;
+            --success: #22c55e;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(ellipse at 60% 0%, rgba(99,0,200,0.18) 0%, transparent 55%),
+                        radial-gradient(ellipse at 10% 90%, rgba(14,165,233,0.12) 0%, transparent 50%),
+                        linear-gradient(160deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+            color: var(--text);
+        }
+
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 0 32px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03);
+            padding: clamp(1.75rem, 5vw, 2.75rem) clamp(1.5rem, 5vw, 2.5rem);
+            width: 100%;
+            max-width: 440px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute; inset: -1px;
+            border-radius: 21px;
+            background: linear-gradient(135deg, rgba(168,85,247,0.2), transparent 60%, rgba(56,189,248,0.1));
+            pointer-events: none;
+        }
+
+        .logo-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+        }
+
+        .logo-icon {
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            background: rgba(168,85,247,0.12);
+            border: 1px solid rgba(168,85,247,0.3);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 24px var(--accent-glow);
+            flex-shrink: 0;
+        }
+
+        .logo-icon svg { width: 26px; height: 26px; color: var(--accent); stroke: currentColor; }
+
+        .logo-title {
+            font-size: clamp(1.35rem, 4vw, 1.75rem);
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .logo-sub {
+            color: var(--muted);
+            font-size: clamp(0.78rem, 2.5vw, 0.875rem);
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            margin-bottom: 1.25rem;
+        }
+
+        label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--muted);
+            letter-spacing: 0.02em;
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 10px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            overflow: hidden;
+        }
+
+        .input-row:focus-within {
+            border-color: rgba(168,85,247,0.55);
+            box-shadow: 0 0 0 3px rgba(168,85,247,0.1);
+        }
+
+        .input-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            flex-shrink: 0;
+            color: var(--muted);
+        }
+
+        .input-icon svg { width: 16px; height: 16px; stroke: currentColor; }
+
+        .input-row input {
+            flex: 1;
+            min-width: 0;
+            padding: 0.78rem 0.9rem 0.78rem 0;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text);
+            font-family: 'Outfit', sans-serif;
+            font-size: clamp(0.875rem, 2.5vw, 0.95rem);
+        }
+
+        .input-row input::placeholder { color: var(--muted); opacity: 0.6; }
+
+        .btn-toggle-pw {
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            padding: 0 0.75rem;
+            display: flex;
+            align-items: center;
+            transition: color 0.2s;
+            flex-shrink: 0;
+        }
+        .btn-toggle-pw:hover { color: var(--text); }
+        .btn-toggle-pw svg { width: 16px; height: 16px; stroke: currentColor; }
+
+        .btn-login {
+            width: 100%;
+            padding: 0.85rem;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #9333ea, #7c3aed);
+            color: white;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: clamp(0.9rem, 2.5vw, 0.97rem);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+            box-shadow: 0 4px 20px rgba(139,92,246,0.4);
+            position: relative;
+            overflow: hidden;
+            margin-top: 1.5rem;
+        }
+
+        .btn-login::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+        }
+
+        .btn-login:hover   { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 6px 24px rgba(139,92,246,0.5); }
+        .btn-login:active  { transform: translateY(0); }
+        .btn-login:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .btn-login svg { width: 18px; height: 18px; stroke: currentColor; flex-shrink: 0; }
+
+        .spinner {
+            width: 18px; height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: none;
+        }
+        .btn-login.loading .spinner { display: block; }
+        .btn-login.loading .btn-text { display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .alert {
+            font-size: 0.84rem;
+            border-radius: 8px;
+            padding: 0.6rem 0.9rem;
+            margin-bottom: 1rem;
+            display: none;
+            text-align: left;
+            line-height: 1.4;
+        }
+        .alert.error   { background: rgba(244,63,94,0.1); border: 1px solid rgba(244,63,94,0.25); color: #fb7185; }
+        .alert.success { background: rgba(34,197,94,0.1);  border: 1px solid rgba(34,197,94,0.25);  color: #4ade80; }
+
+        @media (max-width: 480px) {
+            .card { padding: 1.5rem 1.25rem; border-radius: 16px; }
+            .logo-icon { width: 48px; height: 48px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="logo-wrap">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+            </div>
+            <h1 class="logo-title" id="pageTitle">Tayyab Scalper</h1>
+            <p class="logo-sub" id="pageSub">Enter credentials to access account</p>
+        </div>
+
+        <form id="loginForm" onsubmit="handleLogin(event)" novalidate>
+            <div class="form-group">
+                <label for="email">Admin Email</label>
+                <div class="input-row">
+                    <span class="input-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+                        </svg>
+                    </span>
+                    <input type="email" id="email" required placeholder="admin@tradingbot.com" autocomplete="email">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <div class="input-row">
+                    <span class="input-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="7.5" cy="15.5" r="5.5"></circle>
+                            <path d="m21 2-9.6 9.6"></path>
+                            <path d="m15.5 7.5 3 3L22 7l-3-3"></path>
+                        </svg>
+                    </span>
+                    <input type="password" id="password" required placeholder="••••••••" autocomplete="current-password">
+                    <button type="button" class="btn-toggle-pw" id="togglePw" aria-label="Show password">
+                        <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="alert error" id="errorBox"></div>
+            <div class="alert success" id="successBox"></div>
+
+            <button type="submit" class="btn-login" id="loginBtn">
+                <div class="spinner"></div>
+                <span class="btn-text" style="display:flex;align-items:center;gap:0.5rem;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                        <polyline points="10 17 15 12 10 7"></polyline>
+                        <line x1="15" y1="12" x2="3" y2="12"></line>
+                    </svg>
+                    Sign In
+                </span>
+            </button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('pageTitle').textContent = 'Tayyab Scalper';
+        document.getElementById('pageSub').textContent = 'Enter credentials to access Trading Dashboard';
+
+        document.getElementById('togglePw').addEventListener('click', () => {
+            const pw = document.getElementById('password');
+            const isText = pw.type === 'text';
+            pw.type = isText ? 'password' : 'text';
+            document.getElementById('eyeIcon').innerHTML = isText
+                ? '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle>'
+                : '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94"></path><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19"></path><line x1="2" y1="2" x2="22" y2="22"></line>';
+        });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const hasCookie = document.cookie.split(';').some(c => c.trim().startsWith('session_id='));
+            if (hasCookie) {
+                window.location.href = '/';
+            }
+            const savedEmail = localStorage.getItem('rememberedEmail');
+            if (savedEmail) {
+                document.getElementById('email').value = savedEmail;
+            }
+        });
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const email      = document.getElementById('email').value.trim();
+            const password   = document.getElementById('password').value;
+            const rememberMe = true;
+            const errorBox   = document.getElementById('errorBox');
+            const successBox = document.getElementById('successBox');
+            const btn        = document.getElementById('loginBtn');
+
+            errorBox.style.display   = 'none';
+            successBox.style.display = 'none';
+            btn.classList.add('loading');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, remember_me: rememberMe })
+                });
+                const data = await res.json();
+                if (res.ok && data.status === 'success') {
+                    localStorage.setItem('rememberedEmail', email);
+                    successBox.textContent = 'Login successful! Redirecting…';
+                    successBox.style.display = 'block';
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 300);
+                } else {
+                    errorBox.textContent = data.detail || 'Invalid credentials. Please try again.';
+                    errorBox.style.display = 'block';
+                }
+            } catch (e) {
+                errorBox.textContent = 'Cannot reach server. Please check your connection.';
+                errorBox.style.display = 'block';
+            } finally {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

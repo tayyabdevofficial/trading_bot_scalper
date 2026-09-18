@@ -1,0 +1,39 @@
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# SQLite Databases & WAL files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Log files
+*.log
+logs/
+binance_api.log
+binance_orders.log
+live_trading.log
+
+# Data Caches & Parquet
+data/cache_klines/
+*.parquet
+
+# Virtual Environments
+venv/
+env/
+.venv/
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Closed Positions History</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-grad-start: #0b0f19;
+            --bg-grad-end: #030712;
+            --glass-bg: rgba(17, 24, 39, 0.55);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --accent-blue: #38bdf8;
+            --accent-purple: #a855f7;
+            --accent-green: #10b981;
+            --accent-red: #f43f5e;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, var(--bg-grad-start), var(--bg-grad-end));
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        /* Responsive Navbar Styling */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(13, 19, 33, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 0.85rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            margin-bottom: 2rem;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #fff;
+            text-decoration: none;
+            background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .navbar-nav {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+        }
+
+        .nav-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--text-main);
+        }
+
+        .nav-toggle-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-main);
+            font-size: 1.5rem;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .nav-btn-switch {
+            padding: 0.4rem 0.85rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .nav-btn-switch.live {
+            background: rgba(168, 85, 247, 0.15);
+            color: #c084fc;
+            border: 1px solid rgba(168, 85, 247, 0.35);
+        }
+        .nav-btn-switch.live:hover {
+            background: var(--accent-purple);
+            color: #fff;
+        }
+
+        .nav-btn-switch.testnet {
+            background: rgba(56, 189, 248, 0.15);
+            color: #7dd3fc;
+            border: 1px solid rgba(56, 189, 248, 0.35);
+        }
+        .nav-btn-switch.testnet:hover {
+            background: var(--accent-blue);
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 0.5rem;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            padding: 1.5rem;
+        }
+
+        .btn-back {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 0.6rem 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .btn-back:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(-2px);
+        }
+
+        /* Table */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 1rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        td {
+            padding: 1.2rem 1rem;
+            font-size: 0.95rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .badge-buy {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-sell {
+            background: rgba(244, 63, 94, 0.15);
+            color: var(--accent-red);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .pnl-text {
+            font-weight: 700;
+        }
+        .pnl-text.pos { color: var(--accent-green); }
+        .pnl-text.neg { color: var(--accent-red); }
+
+        .exit-reason-badge {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .no-positions {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 3rem;
+            font-style: italic;
+        }
+        
+        /* Bot Details Modal CSS */
+        .detail-section {
+            margin-bottom: 1.5rem;
+        }
+        .detail-section h4 {
+            color: var(--accent-purple);
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.25rem;
+        }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem 1.5rem;
+        }
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+        .detail-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        .detail-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+        .position-detail-card {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- WIDGET: header.html -->
+
+
+        <!-- Filters Card -->
+        <div class="glass-card" style="margin-bottom: 1.5rem; padding: 1.2rem 1.5rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+                <div>
+                    <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.4rem;" for="filterNetwork">Filter by Network</label>
+                    <select id="filterNetwork" onchange="filterClosedPositions()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
+                        <option value="all">All Networks</option>
+                        <option value="mainnet">Mainnet (Live)</option>
+                        <option value="testnet">Testnet (Simulation)</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.4rem;" for="filterBot">Filter by Bot Instance</label>
+                    <select id="filterBot" onchange="filterClosedPositions()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
+                        <option value="all">All Bots Combined</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.4rem;" for="filterSymbol">Filter by Symbol</label>
+                    <input type="text" id="filterSymbol" placeholder="e.g. BTCUSDT" oninput="filterClosedPositions()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.4rem;" for="filterStatus">Filter by Status</label>
+                    <select id="filterStatus" onchange="filterClosedPositions()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
+                        <option value="all">All Statuses</option>
+                        <option value="TP_HIT">Take Profit Hit (Profit)</option>
+                        <option value="SL_HIT">Stop Loss Hit (Loss)</option>
+                        <option value="OPPOSITE_SIGNAL_CLOSED">Opposite Signal Exit</option>
+                        <option value="CLOSED">Manual / Other Closed</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.4rem;" for="filterPnl">Filter by PnL</label>
+                    <select id="filterPnl" onchange="filterClosedPositions()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
+                        <option value="all">All Positions</option>
+                        <option value="profit">Profit Only</option>
+                        <option value="loss">Loss Only</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.4rem;" for="filterTps">Filter by TP Hits</label>
+                    <select id="filterTps" onchange="filterClosedPositions()" style="width: 100%; padding: 0.6rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;">
+                        <option value="all">All Hits</option>
+                        <option value="stop_loss">Hit Stop Loss</option>
+                        <option value="0">0 TPs Hit</option>
+                        <option value="1">1 TP Hit</option>
+                        <option value="2">2 TPs Hit</option>
+                        <option value="3">3 TPs Hit</option>
+                        <option value="4">4 TPs Hit</option>
+                        <option value="5">5 TPs Hit</option>
+                        <option value="6">6 TPs Hit</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Positions Table Card -->
+        <div class="glass-card">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Network</th>
+                            <th>Open / Close Time</th>
+                            <th>Order ID</th>
+                            <th>Bot ID</th>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Quantity</th>
+                            <th>Open Price</th>
+                            <th>Close Price</th>
+                            <th>Size</th>
+                            <th>TPs Hit</th>
+                            <th>Exit Reason</th>
+                            <th>Realized PnL ($)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="closedPositionsBody">
+                        <tr>
+                            <td colspan="13" class="no-positions">Loading closed positions hi story...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- WIDGET: bot_detail_modal.html -->
+    <!-- WIDGET: tp_targets_modal.html -->
+
+    <script>
+        const IS_ADMIN = false;
+        const IS_TESTNET = false;
+        const apiBase = (typeof IS_TESTNET !== 'undefined' && IS_TESTNET) ? '/api' : (IS_ADMIN ? '/api/admin' : '/api');
+
+
+        lucide.createIcons();
+
+        let allPositions = [];
+        let loadedBots = [];
+        let activeFilteredTrades = [];
+
+        function formatPrice(val) {
+            if (val === undefined || val === null || isNaN(val) || Number(val) === 0) return '—';
+            // strip trailing zeros by converting to float after fixing precision to 10 decimals
+            return parseFloat(Number(val).toFixed(10)).toString();
+        }
+
+
+        // Fetch bots list once to populate dropdown
+        async function fetchBots() {
+            try {
+                const resp = await fetch(apiBase + '/bots');
+                const bots = await resp.json();
+                loadedBots = bots;
+                
+                const select = document.getElementById('filterBot');
+                const prevVal = select.value;
+                
+                let optionsHtml = '<option value="all">All Bots Combined</option>';
+                const addedIds = new Set();
+                
+                bots.forEach(b => {
+                    if (!addedIds.has(b.id)) {
+                        optionsHtml += `<option value="${b.id}">Bot ID #${b.id} (${b.symbol} - ${b.strategy_name})</option>`;
+                        addedIds.add(b.id);
+                    }
+                });
+                
+                allPositions.forEach(p => {
+                    if (!addedIds.has(p.bot_id)) {
+                        const botName = p.strategy_name ? `(${p.strategy_name})` : '(Deleted Bot)';
+                        optionsHtml += `<option value="${p.bot_id}">Bot ID #${p.bot_id} ${botName}</option>`;
+                        addedIds.add(p.bot_id);
+                    }
+                });
+                
+                select.innerHTML = optionsHtml;
+                select.value = prevVal;
+                if (!select.value) select.value = 'all';
+            } catch (e) {
+                console.error("Error fetching bots list", e);
+            }
+        }
+
+        async function fetchClosedPositions() {
+            try {
+                const response = await fetch(apiBase + '/closed-positions');
+                allPositions = await response.json();
+                await fetchBots();
+                filterClosedPositions();
+            } catch (e) {
+                console.error("Error fetching closed positions", e);
+            }
+        }
+
+        function filterClosedPositions() {
+            const filterNetwork = document.getElementById('filterNetwork')?.value || 'all';
+            const filterBot = document.getElementById('filterBot').value;
+            const filterSymbol = document.getElementById('filterSymbol').value.toUpperCase().trim();
+            const filterStatus = document.getElementById('filterStatus')?.value || 'all';
+            const filterPnl = document.getElementById('filterPnl').value;
+            const filterTps = document.getElementById('filterTps').value;
+            const tbody = document.getElementById('closedPositionsBody');
+
+            const filtered = allPositions.filter(t => {
+                const net = (t.network || 'mainnet').toLowerCase();
+                if (filterNetwork !== 'all' && net !== filterNetwork.toLowerCase()) {
+                    return false;
+                }
+                if (filterBot !== 'all' && String(t.bot_id) !== filterBot) {
+                    return false;
+                }
+                if (filterSymbol && !t.symbol.toUpperCase().includes(filterSymbol)) {
+                    return false;
+                }
+                if (filterStatus !== 'all') {
+                    const st = (t.status || t.type || '').toUpperCase();
+                    if (filterStatus === 'TP_HIT' && !st.includes('TP')) return false;
+                    if (filterStatus === 'SL_HIT' && !st.includes('SL') && !st.includes('STOP_LOSS')) return false;
+                    if (filterStatus === 'OPPOSITE_SIGNAL_CLOSED' && !st.includes('OPPOSITE')) return false;
+                    if (filterStatus === 'CLOSED' && (st.includes('TP') || st.includes('SL') || st.includes('STOP_LOSS') || st.includes('OPPOSITE'))) return false;
+                }
+                if (filterPnl === 'profit' && t.realized_pnl <= 0) {
+                    return false;
+                }
+                if (filterPnl === 'loss' && t.realized_pnl >= 0) {
+                    return false;
+                }
+                if (filterTps !== 'all') {
+                    if (filterTps === 'stop_loss') {
+                        if (t.type !== 'STOP_LOSS' && t.status !== 'SL_HIT') {
+                            return false;
+                        }
+                    } else {
+                        if (String(t.tps_hit) !== filterTps) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            });
+
+             activeFilteredTrades = filtered;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="13" class="no-positions">No closed positions matching the filters.</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map((t, idx) => {
+                let displaySide = t.side || 'LONG';
+                if (displaySide === 'BUY') displaySide = 'LONG';
+                if (displaySide === 'SELL') displaySide = 'SHORT';
+                const sideClass = displaySide === 'LONG' ? 'badge-buy' : 'badge-sell';
+                const pnlVal = Number(t.realized_pnl) || 0.0;
+                const pnlClass = pnlVal >= 0 ? 'pnl-text pos' : 'pnl-text neg';
+                const formattedPnl = pnlVal >= 0 ? `+$${pnlVal.toFixed(2)}` : `-$${Math.abs(pnlVal).toFixed(2)}`;
+                
+                const netBadge = (t.network === 'testnet') 
+                    ? '<span class="badge" style="background:rgba(56,189,248,0.16); color:#7dd3fc; border:1px solid rgba(56,189,248,0.3); font-size:0.75rem; font-weight:700; padding:0.2rem 0.5rem; border-radius:4px;">TESTNET</span>' 
+                    : '<span class="badge" style="background:rgba(168,85,247,0.16); color:#d8b4fe; border:1px solid rgba(168,85,247,0.3); font-size:0.75rem; font-weight:700; padding:0.2rem 0.5rem; border-radius:4px;">MAINNET</span>';
+
+                const ordIdRaw = t.order_id || (t.id ? String(t.id) : '');
+                const orderIdShort = ordIdRaw ? (ordIdRaw.length > 16 ? ordIdRaw.substring(0, 8) + '...' + ordIdRaw.slice(-6) : ordIdRaw) : '—';
+                const orderIdDisplay = `<span class="mono" style="font-size:0.78rem; color:var(--text-muted); cursor:pointer;" title="${ordIdRaw}">${orderIdShort}</span>`;
+
+                let openTime = '—';
+                if (t.open_timestamp || t.created_at) {
+                    const rawO = t.open_timestamp || t.created_at;
+                    try {
+                        openTime = new Date(rawO).toLocaleString("en-US", { timeZone: "Asia/Karachi" });
+                    } catch (e) { openTime = rawO; }
+                }
+                let closeTime = '—';
+                if (t.timestamp || t.updated_at) {
+                    const rawC = t.timestamp || t.updated_at;
+                    try {
+                        closeTime = new Date(rawC).toLocaleString("en-US", { timeZone: "Asia/Karachi" });
+                    } catch (e) { closeTime = rawC; }
+                }
+
+                const openPrice = Number(t.open_price || t.entry_price) || 0.0;
+                const closePrice = Number(t.price || t.close_price) || 0.0;
+                const qty = Number(t.qty) || 0.0;
+                const leverage = Number(t.leverage) || 5;
+                const sizeWithLev = openPrice * qty;
+                const sizeWithoutLev = leverage > 0 ? (sizeWithLev / leverage) : sizeWithLev;
+                
+                const tpsHit = t.tps_hit !== undefined ? t.tps_hit : (t.status === 'TP_HIT' ? 1 : 0);
+                const tpsTotal = t.tps_total !== undefined ? t.tps_total : 1;
+
+                let tpDisplay = `<span style="color: var(--accent-green);">${tpsHit}/${tpsTotal} hit</span>`;
+                if (t.tp_targets && t.tp_targets.length > 0) {
+                    tpDisplay = `<span style="color: var(--accent-green); cursor: pointer; text-decoration: underline;" onclick="showClosedTpModal(${idx})">${tpsHit}/${tpsTotal} hit</span>`;
+                }
+
+                const exitReasonText = t.status || t.exit_reason || t.type || 'CLOSED';
+
+                return `
+                    <tr>
+                        <td data-label="Network">${netBadge}</td>
+                        <td data-label="Open / Close Time" style="font-size: 0.8rem; line-height: 1.3;">
+                            <span style="color: var(--accent-blue)">Created:</span> ${openTime}<br/>
+                            <span style="color: var(--text-muted)">Updated:</span> ${closeTime}
+                        </td>
+                        <td data-label="Order ID">${orderIdDisplay}</td>
+                        <td data-label="Bot ID"><a href="/bot-info?bot_id=${t.bot_id}" style="color: var(--accent-purple); font-weight: 700; text-decoration: underline;">#${t.bot_id} (${t.strategy_name || 'Bot'})</a></td>
+                        <td data-label="Symbol"><strong>${t.symbol}</strong></td>
+                        <td data-label="Side"><span class="${sideClass}">${displaySide}</span></td>
+                        <td data-label="Quantity">${qty} units</td>
+                        <td data-label="Open Price">$${formatPrice(openPrice)}</td>
+                        <td data-label="Close Price">$${formatPrice(closePrice)}</td>
+                        <td data-label="Size">$${sizeWithLev.toFixed(2)} / <strong style="color: var(--accent-blue)">$${sizeWithoutLev.toFixed(2)}</strong></td>
+                        <td data-label="TPs Hit">${tpDisplay}</td>
+                        <td data-label="Exit Reason"><span class="exit-reason-badge">${exitReasonText}</span></td>
+                        <td data-label="Realized PnL ($)"><span class="${pnlClass}">${formattedPnl}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function showBotDetailsById(id) {
+            const bot = loadedBots.find(b => b.id === id);
+            if (!bot) return;
+
+            const modal = document.getElementById('botDetailModal');
+            const content = document.getElementById('botDetailContent');
+            
+            // Build parameters HTML
+            let paramsHtml = '';
+            for (const [key, val] of Object.entries(bot.parameters)) {
+                if (['leverage', 'trade_amount_usd', 'stop_loss_pct', 'take_profit_pct', 'candle_interval', 'use_mtf_filter', 'use_atr_stops', 'use_chop_filter', 'hedge_mode'].includes(key)) {
+                    continue;
+                }
+                paramsHtml += `
+                    <div class="detail-item">
+                        <span class="detail-label">${key.replace(/_/g, ' ').toUpperCase()}</span>
+                        <span class="detail-value">${val}</span>
+                    </div>
+                `;
+            }
+            if (!paramsHtml) paramsHtml = '<div style="color: var(--text-muted); font-size: 0.85rem; grid-column: span 2;">No strategy-specific parameters.</div>';
+
+            // Build active positions HTML
+            let positionsHtml = '';
+            if (bot.position && bot.position.length > 0) {
+                const positions = Array.isArray(bot.position) ? bot.position : [bot.position];
+                positions.forEach((pos, index) => {
+                    const sideClass = pos.side === 'BUY' ? 'badge-buy' : 'badge-sell';
+                    let pnl = 0.0;
+                    if (bot.latest_price > 0) {
+                        if (pos.side === 'BUY') {
+                            pnl = (bot.latest_price - pos.entry_price) * pos.qty;
+                        } else {
+                            pnl = (pos.entry_price - bot.latest_price) * pos.qty;
+                        }
+                    }
+                    const pnlSign = pnl >= 0 ? '+' : '';
+                    const pnlClass = pnl >= 0 ? 'pnl-text pos' : 'pnl-text neg';
+                    
+                    positionsHtml += `
+                        <div class="position-detail-card" style="margin-top: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 0.35rem;">
+                                <span class="${sideClass}" style="padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700; font-size: 0.75rem;">${pos.side}</span>
+                                <span class="${pnlClass}" style="font-size: 1rem; font-weight: 700;">${pnlSign}$${pnl.toFixed(2)}</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; font-size: 0.85rem;">
+                                <div class="detail-item">
+                                    <span class="detail-label">Qty</span>
+                                    <span class="detail-value">${pos.qty}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Entry Price</span>
+                                    <span class="detail-value">$${formatPrice(pos.entry_price)}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Est. Margin</span>
+                                    <span class="detail-value">$${((pos.entry_price * pos.qty) / (bot.parameters.leverage || 10)).toFixed(2)}</span>
+                                </div>
+                                <div class="detail-item" style="margin-top: 0.4rem;">
+                                    <span class="detail-label">Stop Loss</span>
+                                    <span class="detail-value" style="color: var(--accent-red); font-weight:600;">${pos.sl_price > 0 ? '$' + formatPrice(pos.sl_price) : 'None'}</span>
+                                </div>
+                                <div class="detail-item" style="margin-top: 0.4rem;">
+                                    <span class="detail-label">Age</span>
+                                    <span class="detail-value">${formatAge(pos.timestamp)}</span>
+                                </div>
+                                ${pos.tp_targets && pos.tp_targets.length > 0 ? `
+                                <div class="detail-item" style="grid-column: span 3; margin-top: 0.4rem;">
+                                    <span class="detail-label" style="margin-bottom: 0.2rem; display: block;">TP Split Targets (${pos.tp_targets.filter(t => t.hit).length}/${pos.tp_targets.length} hit)</span>
+                                    <div style="display: flex; flex-direction: column; gap: 0.35rem; background: rgba(0,0,0,0.3); padding: 0 0.5rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
+                                        ${pos.tp_targets.map(t => {
+                                            const statusStyle = t.hit ? 'color: var(--accent-green); font-weight: 700;' : 'color: var(--text-muted);';
+                                            const statusLabel = t.hit ? '✔ HIT' : 'PENDING';
+                                            return `
+                                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem;">
+                                                    <span>Target: <strong style="color: #f8fafc;">$${formatPrice(t.target_price)}</strong> (Qty: ${t.qty})</span>
+                                                    <span style="${statusStyle}">${statusLabel} (${t.pct}% closed)</span>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                </div>
+                                ` : `
+                                <div class="detail-item" style="margin-top: 0.4rem;">
+                                    <span class="detail-label">Take Profit</span>
+                                    <span class="detail-value" style="color: var(--accent-green); font-weight:600;">${pos.tp_price > 0 ? '$' + formatPrice(pos.tp_price) : 'None'}</span>
+                                </div>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                positionsHtml = '<div style="color: var(--text-muted); font-size: 0.85rem; padding: 0.5rem 0;">No active position.</div>';
+            }
+
+            content.innerHTML = `
+                <div class="detail-section">
+                    <h4>Core Configuration</h4>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">Bot ID</span>
+                            <span class="detail-value" style="color: var(--accent-purple);">#${bot.id}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Symbol</span>
+                            <span class="detail-value" style="color: #f8fafc; font-weight:700;">${bot.symbol}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Strategy</span>
+                            <span class="detail-value">${bot.strategy_name}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Timeframe</span>
+                            <span class="detail-value" style="font-family: 'JetBrains Mono', monospace;">${bot.parameters.candle_interval || '—'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Status</span>
+                            <span class="detail-value" style="color: ${bot.is_running ? 'var(--accent-green)' : 'var(--accent-red)'}; font-weight: 700;">${bot.is_running ? 'RUNNING' : 'STOPPED'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Latest Price</span>
+                            <span class="detail-value">${bot.latest_price ? '$' + formatPrice(bot.latest_price) : '—'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h4>Risk &amp; Leverage Settings</h4>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">Leverage</span>
+                            <span class="detail-value">${bot.parameters.leverage || 10}x</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Trade Amount (USD)</span>
+                            <span class="detail-value">$${parseFloat(bot.parameters.trade_amount_usd || 0).toFixed(2)}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Stop Loss %</span>
+                            <span class="detail-value">${bot.parameters.stop_loss_pct}%</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Take Profit %</span>
+                            <span class="detail-value">${bot.parameters.take_profit_pct}%</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">MTF Filter</span>
+                            <span class="detail-value">${bot.parameters.use_mtf_filter ? 'ENABLED' : 'DISABLED'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Chop Filter</span>
+                            <span class="detail-value">${bot.parameters.use_chop_filter ? 'ENABLED' : 'DISABLED'}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Trigger Mode</span>
+                            <span class="detail-value" style="color: var(--accent-blue); font-weight: 600;">Candle Close</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h4>Strategy Parameters</h4>
+                    <div class="detail-grid">
+                        ${paramsHtml}
+                    </div>
+                </div>
+
+                <div class="detail-section" style="margin-bottom: 0;">
+                    <h4>Active Position(s) Details</h4>
+                    ${positionsHtml}
+                </div>
+            `;
+
+            modal.style.display = 'flex';
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        }
+
+        function formatAge(isoString) {
+            if (!isoString) return '—';
+            try {
+                const diffMs = new Date() - new Date(isoString);
+                const diffMins = Math.floor(diffMs / 60000);
+                if (diffMins < 1) return 'Just now';
+                if (diffMins < 60) return `${diffMins}m ago`;
+                const diffHours = Math.floor(diffMins / 60);
+                return `${diffHours}h ${diffMins % 60}m ago`;
+            } catch (e) {
+                return '—';
+            }
+        }
+
+        function closeBotDetails() {
+            document.getElementById('botDetailModal').style.display = 'none';
+        }
+
+        // Highlight active navbar tab & subtitle
+        const currentPath = window.location.pathname;
+        const headerSubtitle = document.getElementById('headerSubtitle');
+        if (headerSubtitle) {
+            headerSubtitle.textContent = 'History of realized trades, exits, and profit distributions across all bot instances';
+        }
+        document.title = "Closed Positions - Trading Panel";
+
+        document.querySelectorAll('.header-btn').forEach(btn => btn.classList.remove('active'));
+        if (currentPath.includes('/bots')) {
+            document.getElementById('nav-bots')?.classList.add('active');
+        } else if (currentPath.includes('/positions')) {
+            document.getElementById('nav-positions')?.classList.add('active');
+        } else if (currentPath.includes('/closed-positions')) {
+            document.getElementById('nav-closed')?.classList.add('active');
+        } else if (currentPath.includes('/scanner')) {
+            document.getElementById('nav-scanner')?.classList.add('active');
+        } else {
+            document.getElementById('nav-dashboard')?.classList.add('active');
+        }
+
+
+
+        function showTpTargetsModal(symbol, side, targets) {
+            const modal = document.getElementById('tpTargetsModal');
+            const title = document.getElementById('tpModalTitle');
+            const content = document.getElementById('tpModalContent');
+            
+            title.textContent = `Take Profit Targets — ${symbol} (${side})`;
+            
+            let targetsHtml = `
+                <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                    ${targets.map((t, idx) => {
+                        const hitStyle = t.hit ? 'color: var(--accent-green); font-weight:700;' : 'color: var(--text-muted);';
+                        const hitIcon = t.hit ? '✔ HIT' : 'PENDING';
+                        return `
+                            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:0.75rem 1rem; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+                                <span>Target #${idx+1}: <strong style="color:#f8fafc;">$${formatPrice(t.target_price)}</strong></span>
+                                <span style="${hitStyle}">${hitIcon} (${t.pct}% qty)</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+            
+            content.innerHTML = targetsHtml;
+            modal.style.display = 'flex';
+        }
+
+        function showClosedTpModal(idx) {
+            const t = activeFilteredTrades[idx];
+            if (t) {
+                showTpTargetsModal(t.symbol, t.side, t.tp_targets);
+            }
+        }
+
+        function closeTpTargetsModal() {
+            document.getElementById('tpTargetsModal').style.display = 'none';
+        }
+
+        // Auto refresh every 3 seconds
+        fetchClosedPositions();
+        setInterval(fetchClosedPositions, 3000);
+    </script>
+
+</body>
+</html>

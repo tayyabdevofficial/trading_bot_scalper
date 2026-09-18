@@ -1,0 +1,1754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>30-Day Historical Backtest Analytics | Tayyab Scalper</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-grad-start: #0b0f19;
+            --bg-grad-end: #030712;
+            --glass-bg: rgba(17, 24, 39, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --accent-blue: #38bdf8;
+            --accent-purple: #a855f7;
+            --accent-green: #10b981;
+            --accent-red: #f43f5e;
+            --accent-yellow: #f59e0b;
+            --accent-cyan: #06b6d4;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, var(--bg-grad-start), var(--bg-grad-end));
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 1rem;
+            position: relative;
+        }
+
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 0 0.5rem;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* KPI Stats Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .kpi-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.25s ease;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.16);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
+            opacity: 0.6;
+        }
+
+        .kpi-card.green::before {
+            background: linear-gradient(90deg, transparent, var(--accent-green), transparent);
+        }
+        .kpi-card.purple::before {
+            background: linear-gradient(90deg, transparent, var(--accent-purple), transparent);
+        }
+        .kpi-card.yellow::before {
+            background: linear-gradient(90deg, transparent, var(--accent-yellow), transparent);
+        }
+        .kpi-card.red::before {
+            background: linear-gradient(90deg, transparent, var(--accent-red), transparent);
+        }
+        .kpi-card.cyan::before {
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+        }
+
+        .open-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 26px;
+            height: 22px;
+            padding: 0 6px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .open-badge.none {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+        }
+        .open-badge.one {
+            background: rgba(6, 182, 212, 0.16);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+        .open-badge.two {
+            background: rgba(245, 158, 11, 0.16);
+            color: var(--accent-yellow);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .kpi-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.05);
+            flex-shrink: 0;
+        }
+
+        .kpi-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .kpi-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .kpi-val {
+            font-size: 1.45rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .kpi-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.15rem;
+        }
+
+        /* Strategy Carousel / Filter Badges */
+        .strategy-bar {
+            display: flex;
+            gap: 0.6rem;
+            overflow-x: auto;
+            padding-bottom: 0.6rem;
+            margin-bottom: 1.25rem;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+        }
+
+        .strategy-bar::-webkit-scrollbar {
+            height: 6px;
+        }
+        .strategy-bar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+        }
+
+        .strategy-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.45rem 0.85rem;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .strategy-pill:hover {
+            background: rgba(255, 255, 255, 0.07);
+            color: var(--text-main);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .strategy-pill.active {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(168, 85, 247, 0.25));
+            border-color: var(--accent-blue);
+            color: #fff;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+        }
+
+        .strategy-pill .pill-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            padding: 0.1rem 0.35rem;
+            border-radius: 4px;
+        }
+
+        .strategy-pill .pill-tag.pos {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-green);
+        }
+
+        .strategy-pill .pill-tag.neg {
+            background: rgba(244, 63, 94, 0.2);
+            color: var(--accent-red);
+        }
+
+        /* Filter Controls */
+        .filters-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            align-items: end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .filter-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .filter-input, .filter-select {
+            width: 100%;
+            padding: 0.6rem 0.9rem;
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 0.88rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .filter-input:focus, .filter-select:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-action {
+            padding: 0.6rem 1rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.84rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+            font-family: inherit;
+        }
+
+        .btn-action.primary {
+            background: linear-gradient(135deg, var(--accent-blue), #0284c7);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+        }
+        .btn-action.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(56, 189, 248, 0.4);
+        }
+
+        .btn-action.secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-main);
+            border-color: var(--glass-border);
+        }
+        .btn-action.secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .btn-action.success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+        .btn-action.success:hover {
+            background: var(--accent-green);
+            color: #042f2e;
+        }
+
+        /* Results Table */
+        .table-card {
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .table-header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--glass-border);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .table-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .table-count-badge {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent-blue);
+            font-size: 0.75rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+        }
+
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(11, 15, 25, 0.5);
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid var(--glass-border);
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        td {
+            padding: 0.9rem 1rem;
+            font-size: 0.88rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            white-space: nowrap;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Table Badges & Data Styling */
+        .symbol-badge {
+            font-weight: 700;
+            font-size: 0.92rem;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .strategy-badge {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            background: rgba(168, 85, 247, 0.14);
+            color: #d8b4fe;
+            border: 1px solid rgba(168, 85, 247, 0.25);
+        }
+
+        .tf-badge {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 0.2rem 0.45rem;
+            border-radius: 4px;
+            background: rgba(56, 189, 248, 0.12);
+            color: var(--accent-blue);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .pnl-cell {
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .pnl-cell.pos {
+            color: var(--accent-green);
+        }
+        .pnl-cell.neg {
+            color: var(--accent-red);
+        }
+
+        .winrate-bar-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 110px;
+        }
+
+        .winrate-bar-bg {
+            flex: 1;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .winrate-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, var(--accent-yellow), var(--accent-green));
+        }
+
+        .winrate-bar-fill.high {
+            background: var(--accent-green);
+        }
+
+        .winrate-bar-fill.low {
+            background: var(--accent-red);
+        }
+
+        .pf-pill {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.76rem;
+            font-weight: 700;
+            padding: 0.2rem 0.5rem;
+            border-radius: 6px;
+        }
+        .pf-pill.high {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .pf-pill.mid {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-yellow);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        .pf-pill.low {
+            background: rgba(244, 63, 94, 0.12);
+            color: var(--accent-red);
+            border: 1px solid rgba(244, 63, 94, 0.25);
+        }
+
+        .btn-table-action {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            padding: 0.35rem 0.7rem;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            transition: all 0.2s;
+        }
+
+        .btn-table-action:hover {
+            background: rgba(56, 189, 248, 0.2);
+            border-color: var(--accent-blue);
+            color: #fff;
+        }
+
+        /* Pagination */
+        .pagination-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--glass-border);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .pagination-info {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+        }
+
+        .pagination-controls {
+            display: flex;
+            gap: 0.35rem;
+            align-items: center;
+        }
+
+        .page-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.2rem;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+        }
+
+        .page-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .page-btn.active {
+            background: var(--accent-blue);
+            color: #030712;
+            border-color: var(--accent-blue);
+        }
+
+        /* Loading / Empty States */
+        .state-container {
+            text-align: center;
+            padding: 3.5rem 1rem;
+            color: var(--text-muted);
+        }
+
+        .spinner {
+            width: 38px;
+            height: 38px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(3, 7, 18, 0.8);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-card {
+            background: #0d1322;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+            width: 100%;
+            max-width: 620px;
+            max-height: 90vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .modal-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .modal-close-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+
+        .modal-close-btn:hover {
+            color: #fff;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .param-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .param-tile {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .param-key {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .param-val {
+            font-size: 0.95rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .json-code {
+            background: #070a12;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            color: #cbd5e1;
+            overflow-x: auto;
+            max-height: 220px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .filters-container {
+                grid-template-columns: 1fr;
+            }
+            .kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .table-header-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- WIDGET: header.html -->
+
+        <!-- Top KPI Metric Summary Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card purple">
+                <div class="kpi-icon">
+                    <i data-lucide="layers" style="color: var(--accent-purple);"></i>
+                </div>
+                <div class="kpi-info">
+                    <div class="kpi-label">Tested Models</div>
+                    <div class="kpi-val" id="kpiTotalTests">0</div>
+                    <div class="kpi-sub">5m & 15m Combinations</div>
+                </div>
+            </div>
+
+            <div class="kpi-card yellow">
+                <div class="kpi-icon">
+                    <i data-lucide="activity" style="color: var(--accent-yellow);"></i>
+                </div>
+                <div class="kpi-info">
+                    <div class="kpi-label">Total Trades Opened</div>
+                    <div class="kpi-val" id="kpiTotalTrades">0</div>
+                    <div class="kpi-sub" id="kpiTradesSub">Initial + DCA Signals</div>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-icon">
+                    <i data-lucide="check-circle-2" style="color: var(--accent-blue);"></i>
+                </div>
+                <div class="kpi-info">
+                    <div class="kpi-label">Closed Trades</div>
+                    <div class="kpi-val" id="kpiClosedTrades" style="color: var(--accent-blue);">0</div>
+                    <div class="kpi-sub" id="kpiWinLossSub">TP Exits Completed</div>
+                </div>
+            </div>
+
+            <div class="kpi-card" style="border-color: rgba(6, 182, 212, 0.3);">
+                <div class="kpi-icon">
+                    <i data-lucide="clock" style="color: var(--accent-cyan);"></i>
+                </div>
+                <div class="kpi-info">
+                    <div class="kpi-label">Active Open Trades</div>
+                    <div class="kpi-val" id="kpiOpenTrades" style="color: var(--accent-cyan);">0</div>
+                    <div class="kpi-sub">Holding Pending TP</div>
+                </div>
+            </div>
+
+            <div class="kpi-card green" id="kpiReleasedCard">
+                <div class="kpi-icon">
+                    <i data-lucide="dollar-sign" style="color: var(--accent-green);"></i>
+                </div>
+                <div class="kpi-info">
+                    <div class="kpi-label">Released PnL</div>
+                    <div class="kpi-val" id="kpiReleasedPnl" style="color: var(--accent-green);">$0.00</div>
+                    <div class="kpi-sub">Realized from TP Exits</div>
+                </div>
+            </div>
+
+            <div class="kpi-card green" id="kpiPnlCard">
+                <div class="kpi-icon">
+                    <i data-lucide="wallet" style="color: var(--accent-green);"></i>
+                </div>
+                <div class="kpi-info">
+                    <div class="kpi-label">Total Net PnL</div>
+                    <div class="kpi-val" id="kpiCumulativePnl" style="color: var(--accent-green);">$0.00</div>
+                    <div class="kpi-sub" id="kpiUnrelSub">Released + Unreleased</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Strategy Quick Selector Carousel -->
+        <div class="glass-card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <span style="font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">
+                    <i data-lucide="filter" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i>
+                    Quick Strategy Filters
+                </span>
+                <span id="quickFilterInfo" style="font-size: 0.75rem; color: var(--accent-blue);">13 Strategies &times; Dual Timeframes</span>
+            </div>
+            <div class="strategy-bar" id="strategyBar">
+                <div class="strategy-pill active" data-strategy="all" onclick="selectStrategyPill('all')">
+                    <span>All Strategies</span>
+                </div>
+                <div class="strategy-pill" data-strategy="Stochastic_RSI" onclick="selectStrategyPill('Stochastic_RSI')">
+                    <span>Stochastic RSI</span>
+                </div>
+                <div class="strategy-pill" data-strategy="Keltner_Channel_Breakout" onclick="selectStrategyPill('Keltner_Channel_Breakout')">
+                    <span>Keltner Channel</span>
+                </div>
+                <div class="strategy-pill" data-strategy="RSI_Divergence_Scalp" onclick="selectStrategyPill('RSI_Divergence_Scalp')">
+                    <span>RSI Divergence</span>
+                </div>
+                <div class="strategy-pill" data-strategy="Bollinger_Bands" onclick="selectStrategyPill('Bollinger_Bands')">
+                    <span>Bollinger Bands</span>
+                </div>
+                <div class="strategy-pill" data-strategy="VWAP_Micro_Reversal" onclick="selectStrategyPill('VWAP_Micro_Reversal')">
+                    <span>VWAP Reversal</span>
+                </div>
+                <div class="strategy-pill" data-strategy="Engulfing_Volume_Scalp" onclick="selectStrategyPill('Engulfing_Volume_Scalp')">
+                    <span>Engulfing Volume</span>
+                </div>
+                <div class="strategy-pill" data-strategy="EMA_RSI_Crossover" onclick="selectStrategyPill('EMA_RSI_Crossover')">
+                    <span>EMA RSI</span>
+                </div>
+                <div class="strategy-pill" data-strategy="SuperTrend" onclick="selectStrategyPill('SuperTrend')">
+                    <span>SuperTrend</span>
+                </div>
+                <div class="strategy-pill" data-strategy="Hull_MA_Scalp" onclick="selectStrategyPill('Hull_MA_Scalp')">
+                    <span>Hull MA</span>
+                </div>
+                <div class="strategy-pill" data-strategy="EMA_Ribbon_Scalp" onclick="selectStrategyPill('EMA_Ribbon_Scalp')">
+                    <span>EMA Ribbon</span>
+                </div>
+                <div class="strategy-pill" data-strategy="Volume_Delta_Scalp" onclick="selectStrategyPill('Volume_Delta_Scalp')">
+                    <span>Volume Delta</span>
+                </div>
+                <div class="strategy-pill" data-strategy="MACD_ZeroCross_Scalp" onclick="selectStrategyPill('MACD_ZeroCross_Scalp')">
+                    <span>MACD Cross</span>
+                </div>
+                <div class="strategy-pill" data-strategy="Squeeze_Momentum_Scalp" onclick="selectStrategyPill('Squeeze_Momentum_Scalp')">
+                    <span>Squeeze Momentum</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Controls Toolbar -->
+        <div class="glass-card" style="padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;">
+            <div class="filters-container">
+                <div class="filter-group">
+                    <label class="filter-label" for="filterStrategy">
+                        <i data-lucide="cpu" style="width: 14px; height: 14px;"></i> Strategy
+                    </label>
+                    <select id="filterStrategy" class="filter-select" onchange="onFilterChange()">
+                        <option value="all">All 13 Strategies</option>
+                        <option value="Stochastic_RSI">Stochastic RSI</option>
+                        <option value="Keltner_Channel_Breakout">Keltner Channel Breakout</option>
+                        <option value="RSI_Divergence_Scalp">RSI Divergence Scalp</option>
+                        <option value="Bollinger_Bands">Bollinger Bands</option>
+                        <option value="VWAP_Micro_Reversal">VWAP Micro Reversal</option>
+                        <option value="Engulfing_Volume_Scalp">Engulfing Volume Scalp</option>
+                        <option value="EMA_RSI_Crossover">EMA RSI Crossover</option>
+                        <option value="SuperTrend">SuperTrend Directional</option>
+                        <option value="Hull_MA_Scalp">Hull MA Scalp</option>
+                        <option value="EMA_Ribbon_Scalp">EMA Ribbon Scalp</option>
+                        <option value="Volume_Delta_Scalp">Volume Delta Scalp</option>
+                        <option value="MACD_ZeroCross_Scalp">MACD ZeroCross Scalp</option>
+                        <option value="Squeeze_Momentum_Scalp">Squeeze Momentum Scalp</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label" for="filterTimeframe">
+                        <i data-lucide="clock" style="width: 14px; height: 14px;"></i> Timeframe
+                    </label>
+                    <select id="filterTimeframe" class="filter-select" onchange="onFilterChange()">
+                        <option value="all">All Timeframes (5m & 15m)</option>
+                        <option value="5m">5m Timeframe</option>
+                        <option value="15m">15m Timeframe</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label" for="filterSymbol">
+                        <i data-lucide="search" style="width: 14px; height: 14px;"></i> Symbol Search
+                    </label>
+                    <input type="text" id="filterSymbol" class="filter-input" placeholder="e.g. BTC, ETH, SOL, PEPE..." oninput="onSearchInput()">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label" for="filterProfitability">
+                        <i data-lucide="pie-chart" style="width: 14px; height: 14px;"></i> Filter By Outcome
+                    </label>
+                    <select id="filterProfitability" class="filter-select" onchange="onFilterChange()">
+                        <option value="all">All Outcomes</option>
+                        <option value="released_pos">Released PnL > $0</option>
+                        <option value="total_pos">Total Net PnL > $0</option>
+                        <option value="unreleased_pos">Unreleased PnL > $0</option>
+                        <option value="has_open">Has Open Trades (> 0)</option>
+                        <option value="no_open">Zero Open Trades (= 0)</option>
+                        <option value="winrate_50">Win Rate >= 50%</option>
+                        <option value="winrate_80">Win Rate >= 80%</option>
+                        <option value="pf_12">Profit Factor >= 1.2</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label" for="filterSort">
+                        <i data-lucide="arrow-up-down" style="width: 14px; height: 14px;"></i> Sort Results
+                    </label>
+                    <select id="filterSort" class="filter-select" onchange="onFilterChange()">
+                        <option value="released_desc">Highest Released PnL ($)</option>
+                        <option value="released_asc">Lowest Released PnL ($)</option>
+                        <option value="total_desc">Highest Total Net PnL ($)</option>
+                        <option value="total_asc">Lowest Total Net PnL ($)</option>
+                        <option value="unreleased_desc">Highest Unreleased PnL ($)</option>
+                        <option value="unreleased_asc">Lowest Unreleased PnL ($)</option>
+                        <option value="winrate_desc">Highest Win Rate (%)</option>
+                        <option value="trades_desc">Most Total Trades Opened</option>
+                        <option value="closed_desc">Most Closed Trades (TP)</option>
+                        <option value="open_desc">Most Active Open Trades</option>
+                        <option value="symbol_asc">Symbol (A-Z)</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label" for="filterLimit">
+                        <i data-lucide="list" style="width: 14px; height: 14px;"></i> Page Size
+                    </label>
+                    <select id="filterLimit" class="filter-select" onchange="onLimitChange()">
+                        <option value="50">50 Rows</option>
+                        <option value="100">100 Rows</option>
+                        <option value="250">250 Rows</option>
+                        <option value="500">500 Rows</option>
+                        <option value="1000">1,000 Rows</option>
+                    </select>
+                </div>
+
+                <div class="filter-actions">
+                    <button class="btn-action secondary" onclick="resetFilters()" title="Reset all filters">
+                        <i data-lucide="rotate-ccw" style="width: 15px; height: 15px;"></i> Reset
+                    </button>
+                    <button class="btn-action success" onclick="exportCSV()" title="Export filtered results to CSV">
+                        <i data-lucide="download" style="width: 15px; height: 15px;"></i> Export CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Backtest Results Table Card -->
+        <div class="glass-card table-card">
+            <div class="table-header-bar">
+                <div class="table-title">
+                    <i data-lucide="database" style="color: var(--accent-blue);"></i>
+                    <span>Backtest Performance Matrix</span>
+                    <span class="table-count-badge" id="resultsCountBadge">Loading...</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted);" id="tableSummaryText"></span>
+                    <button class="btn-table-action" onclick="fetchResults(true)" title="Refresh data">
+                        <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="backtestTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px; text-align: center;">#</th>
+                            <th>Symbol</th>
+                            <th>Strategy</th>
+                            <th>TF</th>
+                            <th style="text-align: center;">Total Trades</th>
+                            <th style="text-align: center;">Closed (TP)</th>
+                            <th style="text-align: center;">Active Open</th>
+                            <th style="text-align: right;">Released PnL ($)</th>
+                            <th style="text-align: right;">Unreleased ($)</th>
+                            <th style="text-align: right;">Total Net PnL ($)</th>
+                            <th style="min-width: 110px;">Win Rate (%)</th>
+                            <th style="text-align: center;">Profit Factor</th>
+                            <th style="text-align: right;">Max DD ($)</th>
+                            <th style="text-align: center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="backtestTableBody">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+
+                <div id="loadingState" class="state-container">
+                    <div class="spinner"></div>
+                    <p>Loading historical backtest results...</p>
+                </div>
+
+                <div id="emptyState" class="state-container" style="display: none;">
+                    <i data-lucide="inbox" style="width: 42px; height: 42px; margin-bottom: 0.75rem; opacity: 0.5;"></i>
+                    <p style="font-size: 1.05rem; font-weight: 600; color: #fff;">No backtest results match your filter criteria</p>
+                    <p style="font-size: 0.85rem; margin-top: 0.35rem;">Try clearing the search query or selecting "All Outcomes"</p>
+                    <button class="btn-action secondary" onclick="resetFilters()" style="margin-top: 1rem;">
+                        <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i> Clear Filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table Pagination -->
+            <div class="pagination-bar" id="paginationBar" style="display: none;">
+                <div class="pagination-info" id="paginationInfo">
+                    Showing 1 to 50 of 5,330 entries
+                </div>
+                <div class="pagination-controls">
+                    <button class="page-btn" id="btnFirstPage" onclick="goToPage(1)" title="First Page">
+                        <i data-lucide="chevrons-left" style="width: 16px; height: 16px;"></i>
+                    </button>
+                    <button class="page-btn" id="btnPrevPage" onclick="prevPage()" title="Previous Page">
+                        <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i> Prev
+                    </button>
+                    <span id="pageIndicator" style="font-size: 0.85rem; font-weight: 600; padding: 0 0.5rem; font-family: 'JetBrains Mono', monospace;">
+                        Page 1 of 107
+                    </span>
+                    <button class="page-btn" id="btnNextPage" onclick="nextPage()" title="Next Page">
+                        Next <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
+                    </button>
+                    <button class="page-btn" id="btnLastPage" onclick="goToLastPage()" title="Last Page">
+                        <i data-lucide="chevrons-right" style="width: 16px; height: 16px;"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Parameter Inspection Modal -->
+    <div class="modal-overlay" id="paramModal" onclick="closeParamModal(event)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i data-lucide="sliders" style="color: var(--accent-blue);"></i>
+                    <span id="modalTitle">Calibrated Bot Parameters</span>
+                </div>
+                <button class="modal-close-btn" onclick="closeParamModal()" title="Close">
+                    <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Info badges -->
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+                    <span class="symbol-badge" id="modalSymbol" style="font-size: 1.1rem;">BTCUSDT</span>
+                    <span class="strategy-badge" id="modalStrategy">Stochastic_RSI</span>
+                    <span class="tf-badge" id="modalTf">5m</span>
+                    <span class="pf-pill high" id="modalPeriod">30 Days Historical</span>
+                </div>
+
+                <!-- Metrics Summary Box -->
+                <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--glass-border); border-radius: 10px; padding: 1rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; text-align: center;">
+                    <div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Released PnL</div>
+                        <div style="font-size: 1.1rem; font-weight: 700;" class="mono" id="modalReleasedPnl">$0.00</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Unreleased PnL</div>
+                        <div style="font-size: 1.1rem; font-weight: 700;" class="mono" id="modalUnreleasedPnl">$0.00</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Total Net PnL</div>
+                        <div style="font-size: 1.1rem; font-weight: 700;" class="mono" id="modalPnl">$0.00</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Total Trades Opened</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #fff;" class="mono" id="modalTotalTrades">0</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Closed Trades (TP)</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-blue);" class="mono" id="modalClosedTrades">0</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Active Open Trades</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-cyan);" class="mono" id="modalOpenTrades">0</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Win Rate</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-green);" class="mono" id="modalWr">0%</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Profit Factor</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-blue);" class="mono" id="modalPf">0.00</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Max Drawdown</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-red);" class="mono" id="modalDd">$0.00</div>
+                    </div>
+                </div>
+
+                <!-- Parameter Grid Tiles -->
+                <div>
+                    <label style="display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.5rem;">
+                        Strategy Parameter Configuration
+                    </label>
+                    <div class="param-grid" id="modalParamGrid">
+                        <!-- Tiles injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Raw JSON Configuration -->
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                        <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">
+                            JSON Configuration
+                        </span>
+                        <button class="btn-table-action" onclick="copyModalJson()" id="btnCopyJson">
+                            <i data-lucide="copy" style="width: 13px; height: 13px;"></i> Copy JSON
+                        </button>
+                    </div>
+                    <pre class="json-code" id="modalJsonCode"></pre>
+                </div>
+
+                <!-- Bottom action buttons -->
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; border-top: 1px solid var(--glass-border); flex-wrap: wrap; gap: 0.5rem;">
+                    <div style="display: flex; gap: 0.5rem;">
+                        <a id="btnModalChart" href="#" class="btn-action primary" style="text-decoration: none;">
+                            <i data-lucide="candlestick-chart" style="width: 14px; height: 14px;"></i> View Candlestick Chart
+                        </a>
+                        <a id="btnGoToBot" href="/bots" class="btn-action secondary" style="text-decoration: none;">
+                            <i data-lucide="cpu" style="width: 14px; height: 14px;"></i> Bots Page
+                        </a>
+                    </div>
+                    <button class="btn-action secondary" onclick="closeParamModal()">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client-side Logic -->
+    <script>
+        // State variables
+        let allResults = [];
+        let filteredResults = [];
+        let currentPage = 1;
+        let pageSize = 50;
+        let searchTimeout = null;
+        let activeModalData = null;
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set active navigation tab
+            const navBtn = document.getElementById('nav-backtest');
+            if (navBtn) navBtn.classList.add('active');
+
+            // Render Lucide Icons
+            if (window.lucide) lucide.createIcons();
+
+            // Load summary stats and results
+            fetchSummaryStats();
+            fetchResults();
+        });
+
+        // ── Fetch Summary Statistics ─────────────────────────────────────────
+        async function fetchSummaryStats() {
+            try {
+                const res = await fetch('/api/backtest-stats');
+                if (!res.ok) return;
+                const data = await res.json();
+
+                if (data.total_tests !== undefined) {
+                    document.getElementById('kpiTotalTests').textContent = Number(data.total_tests).toLocaleString();
+                }
+                if (data.total_trades !== undefined) {
+                    const elTrades = document.getElementById('kpiTotalTrades');
+                    if (elTrades) elTrades.textContent = Number(data.total_trades).toLocaleString();
+                }
+                if (data.total_closed_trades !== undefined) {
+                    const elClosed = document.getElementById('kpiClosedTrades');
+                    if (elClosed) elClosed.textContent = Number(data.total_closed_trades).toLocaleString();
+                    const elSub = document.getElementById('kpiWinLossSub');
+                    if (elSub) {
+                        elSub.textContent = `${Number(data.total_wins || 0).toLocaleString()} Wins / ${Number(data.total_losses || 0).toLocaleString()} Losses`;
+                    }
+                }
+                
+                // Released PnL
+                if (data.total_released_pnl !== undefined) {
+                    const el = document.getElementById('kpiReleasedPnl');
+                    if (el) {
+                        const sign = data.total_released_pnl >= 0 ? '+' : '';
+                        el.textContent = `${sign}$${Number(data.total_released_pnl).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                        el.style.color = data.total_released_pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                    }
+                }
+
+                // Unreleased PnL
+                if (data.total_unreleased_pnl !== undefined) {
+                    const el = document.getElementById('kpiUnreleasedPnl');
+                    if (el) {
+                        const sign = data.total_unreleased_pnl >= 0 ? '+' : '';
+                        el.textContent = `${sign}$${Number(data.total_unreleased_pnl).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                        el.style.color = data.total_unreleased_pnl >= 0 ? 'var(--accent-cyan)' : 'var(--accent-red)';
+                    }
+                }
+
+                // Cumulative Total Net PnL
+                if (data.total_pnl !== undefined) {
+                    const el = document.getElementById('kpiCumulativePnl');
+                    if (el) {
+                        const sign = data.total_pnl >= 0 ? '+' : '';
+                        el.textContent = `${sign}$${Number(data.total_pnl).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                        el.style.color = data.total_pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                    }
+                }
+
+                // Open Trades
+                if (data.total_open_trades !== undefined) {
+                    const el = document.getElementById('kpiOpenTrades');
+                    if (el) el.textContent = Number(data.total_open_trades).toLocaleString();
+                }
+            } catch (err) {
+                console.error("Failed to load backtest stats:", err);
+            }
+        }
+
+        // ── Fetch All Backtest Results ────────────────────────────────────────
+        async function fetchResults(force = false) {
+            const loadingState = document.getElementById('loadingState');
+            const emptyState = document.getElementById('emptyState');
+            const tableBody = document.getElementById('backtestTableBody');
+            const paginationBar = document.getElementById('paginationBar');
+
+            loadingState.style.display = 'block';
+            emptyState.style.display = 'none';
+            tableBody.innerHTML = '';
+            paginationBar.style.display = 'none';
+
+            try {
+                // Fetch up to 15,000 records to cover all combinations
+                const res = await fetch('/api/backtest-results?limit=15000');
+                if (!res.ok) throw new Error("HTTP error " + res.status);
+                allResults = await res.json();
+
+                // Apply current filters
+                applyFilters();
+            } catch (err) {
+                console.error("Failed to fetch backtest results:", err);
+                loadingState.style.display = 'none';
+                tableBody.innerHTML = `<tr><td colspan="14" style="text-align: center; color: var(--accent-red); padding: 2rem;">Error loading backtest data: ${err.message}</td></tr>`;
+            }
+        }
+
+        // ── Filter Application ────────────────────────────────────────────────
+        function applyFilters() {
+            const strategyFilter = document.getElementById('filterStrategy').value;
+            const timeframeFilter = document.getElementById('filterTimeframe').value;
+            const symbolQuery = document.getElementById('filterSymbol').value.trim().toUpperCase();
+            const outcomeFilter = document.getElementById('filterProfitability').value;
+            const sortFilter = document.getElementById('filterSort').value;
+
+            // Filter array
+            filteredResults = allResults.filter(item => {
+                // Strategy filter
+                if (strategyFilter !== 'all' && item.strategy_name !== strategyFilter) {
+                    return false;
+                }
+                // Timeframe filter
+                if (timeframeFilter !== 'all' && item.timeframe !== timeframeFilter) {
+                    return false;
+                }
+                // Symbol query
+                if (symbolQuery && !item.symbol.includes(symbolQuery)) {
+                    return false;
+                }
+                // Outcome filter
+                if (outcomeFilter === 'released_pos' && (item.released_pnl || 0) <= 0) {
+                    return false;
+                }
+                if (outcomeFilter === 'total_pos' && (item.total_pnl || 0) <= 0) {
+                    return false;
+                }
+                if (outcomeFilter === 'unreleased_pos' && (item.unreleased_pnl || 0) <= 0) {
+                    return false;
+                }
+                if (outcomeFilter === 'has_open' && (!item.open_trades_count || item.open_trades_count <= 0)) {
+                    return false;
+                }
+                if (outcomeFilter === 'no_open' && (item.open_trades_count && item.open_trades_count > 0)) {
+                    return false;
+                }
+                if (outcomeFilter === 'winrate_50' && (item.win_rate || 0) < 50) {
+                    return false;
+                }
+                if (outcomeFilter === 'winrate_80' && (item.win_rate || 0) < 80) {
+                    return false;
+                }
+                if (outcomeFilter === 'pf_12' && (item.profit_factor || 0) < 1.2) {
+                    return false;
+                }
+                return true;
+            });
+
+            // Sort array
+            filteredResults.sort((a, b) => {
+                switch (sortFilter) {
+                    case 'released_desc': return (b.released_pnl || 0) - (a.released_pnl || 0);
+                    case 'released_asc': return (a.released_pnl || 0) - (b.released_pnl || 0);
+                    case 'total_desc': return (b.total_pnl || 0) - (a.total_pnl || 0);
+                    case 'total_asc': return (a.total_pnl || 0) - (b.total_pnl || 0);
+                    case 'unreleased_desc': return (b.unreleased_pnl || 0) - (a.unreleased_pnl || 0);
+                    case 'unreleased_asc': return (a.unreleased_pnl || 0) - (b.unreleased_pnl || 0);
+                    case 'winrate_desc': return (b.win_rate || 0) - (a.win_rate || 0);
+                    case 'trades_desc': return (b.total_trades || 0) - (a.total_trades || 0);
+                    case 'closed_desc': return (b.closed_trades || 0) - (a.closed_trades || 0);
+                    case 'open_desc': return (b.open_trades_count || 0) - (a.open_trades_count || 0);
+                    case 'symbol_asc': return a.symbol.localeCompare(b.symbol);
+                    default: return (b.released_pnl || 0) - (a.released_pnl || 0);
+                }
+            });
+
+            // Update badges and summary
+            document.getElementById('resultsCountBadge').textContent = `${filteredResults.length.toLocaleString()} of ${allResults.length.toLocaleString()} Pairs`;
+            
+            // Calculate aggregate metrics for current filtered subset
+            let subsetReleased = 0;
+            let subsetUnreleased = 0;
+            let subsetTotal = 0;
+            let subsetTotalTrades = 0;
+            let subsetClosed = 0;
+            let subsetOpen = 0;
+            filteredResults.forEach(r => {
+                subsetReleased += (r.released_pnl || 0);
+                subsetUnreleased += (r.unreleased_pnl || 0);
+                subsetTotal += (r.total_pnl || 0);
+                subsetTotalTrades += (r.total_trades || 0);
+                subsetClosed += (r.closed_trades || 0);
+                subsetOpen += (r.open_trades_count || 0);
+            });
+            const fmt = (n) => (n >= 0 ? '+' : '') + `$${Number(n).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('tableSummaryText').textContent = 
+                `Filtered: ${filteredResults.length.toLocaleString()} pairs | Total Trades: ${subsetTotalTrades.toLocaleString()} (Closed: ${subsetClosed.toLocaleString()}, Open: ${subsetOpen.toLocaleString()}) | Net PnL: ${fmt(subsetTotal)}`;
+
+            // Reset to page 1 and render
+            currentPage = 1;
+            renderTable();
+        }
+
+        // ── Render Table & Pagination ────────────────────────────────────────
+        function renderTable() {
+            const loadingState = document.getElementById('loadingState');
+            const emptyState = document.getElementById('emptyState');
+            const tableBody = document.getElementById('backtestTableBody');
+            const paginationBar = document.getElementById('paginationBar');
+
+            loadingState.style.display = 'none';
+
+            if (filteredResults.length === 0) {
+                emptyState.style.display = 'block';
+                tableBody.innerHTML = '';
+                paginationBar.style.display = 'none';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            paginationBar.style.display = 'flex';
+
+            // Pagination slice
+            const totalPages = Math.ceil(filteredResults.length / pageSize) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, filteredResults.length);
+            const pageRows = filteredResults.slice(startIndex, endIndex);
+
+            let html = '';
+            pageRows.forEach((row, idx) => {
+                const rank = startIndex + idx + 1;
+                
+                // Released PnL
+                const relVal = Number(row.released_pnl || 0);
+                const relClass = relVal > 0 ? 'pos' : (relVal < 0 ? 'neg' : '');
+                const relSign = relVal > 0 ? '+' : '';
+                const relText = `${relSign}$${relVal.toFixed(2)}`;
+
+                // Unreleased PnL
+                const unrelVal = Number(row.unreleased_pnl || 0);
+                const unrelClass = unrelVal > 0 ? 'pos' : (unrelVal < 0 ? 'neg' : '');
+                const unrelSign = unrelVal > 0 ? '+' : '';
+                const unrelText = `${unrelSign}$${unrelVal.toFixed(2)}`;
+
+                // Total PnL
+                const totVal = Number(row.total_pnl || 0);
+                const totClass = totVal > 0 ? 'pos' : (totVal < 0 ? 'neg' : '');
+                const totSign = totVal > 0 ? '+' : '';
+                const totText = `${totSign}$${totVal.toFixed(2)}`;
+
+                // Win rate class & bar fill
+                const wr = Number(row.win_rate || 0);
+                let wrClass = 'mid';
+                if (wr >= 50) wrClass = 'high';
+                else if (wr < 30) wrClass = 'low';
+
+                // Profit factor class
+                const pf = Number(row.profit_factor || 0);
+                let pfClass = 'mid';
+                if (pf >= 1.2) pfClass = 'high';
+                else if (pf < 0.9) pfClass = 'low';
+
+                // Open Trades badge
+                const openCount = Number(row.open_trades_count || 0);
+                let openBadgeClass = 'none';
+                if (openCount === 1) openBadgeClass = 'one';
+                else if (openCount >= 2) openBadgeClass = 'two';
+
+                const cleanStrat = row.strategy_name.replace(/_/g, ' ');
+
+                html += `
+                    <tr>
+                        <td style="text-align: center; color: var(--text-muted); font-size: 0.8rem;" class="mono">${rank}</td>
+                        <td>
+                            <span class="symbol-badge">
+                                <i data-lucide="coins" style="width: 14px; height: 14px; color: var(--accent-yellow);"></i>
+                                ${row.symbol}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="strategy-badge">${cleanStrat}</span>
+                        </td>
+                        <td>
+                            <span class="tf-badge">${row.timeframe || '5m'}</span>
+                        </td>
+                        <td style="text-align: center;" class="mono">
+                            <div style="font-weight: 700; color: #fff;">${Number(row.total_trades || 0).toLocaleString()}</div>
+                            <div style="font-size: 0.72rem; color: var(--text-muted);">${Number(row.total_long_trades || 0)}L / ${Number(row.total_short_trades || 0)}S</div>
+                        </td>
+                        <td style="text-align: center; color: var(--accent-blue);" class="mono">
+                            ${Number(row.closed_trades || 0).toLocaleString()}
+                        </td>
+                        <td style="text-align: center;">
+                            <span class="open-badge ${openBadgeClass}">${openCount}</span>
+                        </td>
+                        <td style="text-align: right;" class="pnl-cell ${relClass}">
+                            ${relText}
+                        </td>
+                        <td style="text-align: right;" class="pnl-cell ${unrelClass}">
+                            ${unrelText}
+                        </td>
+                        <td style="text-align: right;" class="pnl-cell ${totClass}">
+                            ${totText}
+                        </td>
+                        <td>
+                            <div class="winrate-bar-wrap">
+                                <span class="mono" style="font-weight: 700; font-size: 0.84rem; min-width: 45px;">${wr.toFixed(1)}%</span>
+                                <div class="winrate-bar-bg">
+                                    <div class="winrate-bar-fill ${wrClass}" style="width: ${Math.min(wr, 100)}%;"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td style="text-align: center;">
+                            <span class="pf-pill ${pfClass}">${pf.toFixed(2)}</span>
+                        </td>
+                        <td style="text-align: right; color: var(--accent-red);" class="mono">
+                            $${Number(row.max_drawdown || 0).toFixed(2)}
+                        </td>
+                        <td style="text-align: center; white-space: nowrap;">
+                            <div style="display: inline-flex; gap: 0.35rem; align-items: center;">
+                                <a href="/backtest/detail?id=${row.id}" class="btn-table-action" style="text-decoration: none;" title="Open Candlestick Chart with Signal Markers">
+                                    <i data-lucide="candlestick-chart" style="width: 13px; height: 13px; color: var(--accent-blue);"></i> Chart
+                                </a>
+                                <button class="btn-table-action" onclick="openParamModal(${row.id})" title="Inspect Strategy Parameters">
+                                    <i data-lucide="sliders" style="width: 13px; height: 13px;"></i> Params
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableBody.innerHTML = html;
+
+            // Re-render icons in new rows
+            if (window.lucide) lucide.createIcons();
+
+            // Update pagination UI
+            document.getElementById('paginationInfo').textContent = 
+                `Showing ${startIndex + 1} to ${endIndex} of ${filteredResults.length.toLocaleString()} combinations`;
+            document.getElementById('pageIndicator').textContent = 
+                `Page ${currentPage} of ${totalPages}`;
+
+            document.getElementById('btnFirstPage').disabled = (currentPage === 1);
+            document.getElementById('btnPrevPage').disabled = (currentPage === 1);
+            document.getElementById('btnNextPage').disabled = (currentPage === totalPages);
+            document.getElementById('btnLastPage').disabled = (currentPage === totalPages);
+        }
+
+        // ── Strategy Pill Carousel Filter ────────────────────────────────────
+        function selectStrategyPill(strat) {
+            // Update UI pill active states
+            document.querySelectorAll('.strategy-pill').forEach(pill => {
+                if (pill.getAttribute('data-strategy') === strat) {
+                    pill.classList.add('active');
+                } else {
+                    pill.classList.remove('active');
+                }
+            });
+
+            // Update dropdown
+            document.getElementById('filterStrategy').value = strat;
+            applyFilters();
+        }
+
+        // ── Filter Triggers ──────────────────────────────────────────────────
+        function onFilterChange() {
+            const currentStrat = document.getElementById('filterStrategy').value;
+            // Sync strategy pills
+            document.querySelectorAll('.strategy-pill').forEach(pill => {
+                if (pill.getAttribute('data-strategy') === currentStrat) {
+                    pill.classList.add('active');
+                } else {
+                    pill.classList.remove('active');
+                }
+            });
+            applyFilters();
+        }
+
+        function onSearchInput() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                applyFilters();
+            }, 250);
+        }
+
+        function onLimitChange() {
+            pageSize = parseInt(document.getElementById('filterLimit').value, 10);
+            currentPage = 1;
+            renderTable();
+        }
+
+        function resetFilters() {
+            document.getElementById('filterStrategy').value = 'all';
+            document.getElementById('filterTimeframe').value = 'all';
+            document.getElementById('filterSymbol').value = '';
+            document.getElementById('filterProfitability').value = 'all';
+            document.getElementById('filterSort').value = 'released_desc';
+            document.getElementById('filterLimit').value = '50';
+            pageSize = 50;
+            
+            // Sync pills
+            selectStrategyPill('all');
+        }
+
+        // ── Pagination Actions ───────────────────────────────────────────────
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable();
+                scrollToTableTop();
+            }
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(filteredResults.length / pageSize) || 1;
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable();
+                scrollToTableTop();
+            }
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            renderTable();
+            scrollToTableTop();
+        }
+
+        function goToLastPage() {
+            const totalPages = Math.ceil(filteredResults.length / pageSize) || 1;
+            currentPage = totalPages;
+            renderTable();
+            scrollToTableTop();
+        }
+
+        function scrollToTableTop() {
+            const tableEl = document.getElementById('backtestTable');
+            if (tableEl) {
+                tableEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        // ── Parameter Modal Logic ────────────────────────────────────────────
+        function openParamModal(id) {
+            const item = allResults.find(r => r.id === id);
+            if (!item) return;
+
+            activeModalData = item;
+
+            document.getElementById('modalTitle').textContent = `${item.symbol} Calibrated Settings`;
+            document.getElementById('modalSymbol').textContent = item.symbol;
+            document.getElementById('modalStrategy').textContent = item.strategy_name.replace(/_/g, ' ');
+            document.getElementById('modalTf').textContent = item.timeframe || '5m';
+
+            // Released PnL
+            const relVal = Number(item.released_pnl || 0);
+            const relSign = relVal >= 0 ? '+' : '';
+            const relEl = document.getElementById('modalReleasedPnl');
+            relEl.textContent = `${relSign}$${relVal.toFixed(2)}`;
+            relEl.style.color = relVal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+
+            // Unreleased PnL
+            const unrelVal = Number(item.unreleased_pnl || 0);
+            const unrelSign = unrelVal >= 0 ? '+' : '';
+            const unrelEl = document.getElementById('modalUnreleasedPnl');
+            unrelEl.textContent = `${unrelSign}$${unrelVal.toFixed(2)}`;
+            unrelEl.style.color = unrelVal >= 0 ? 'var(--accent-cyan)' : 'var(--accent-red)';
+
+            // Total Net PnL
+            const totVal = Number(item.total_pnl || 0);
+            const totSign = totVal >= 0 ? '+' : '';
+            const pnlEl = document.getElementById('modalPnl');
+            pnlEl.textContent = `${totSign}$${totVal.toFixed(2)}`;
+            pnlEl.style.color = totVal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+
+            document.getElementById('modalWr').textContent = `${Number(item.win_rate || 0).toFixed(1)}%`;
+            document.getElementById('modalTotalTrades').textContent = Number(item.total_trades || 0).toLocaleString();
+            document.getElementById('modalClosedTrades').textContent = Number(item.closed_trades || 0).toLocaleString();
+            document.getElementById('modalOpenTrades').textContent = Number(item.open_trades_count || 0).toLocaleString();
+            document.getElementById('modalPf').textContent = Number(item.profit_factor || 0).toFixed(2);
+            document.getElementById('modalDd').textContent = `$${Number(item.max_drawdown || 0).toFixed(2)}`;
+
+            // Parameter Grid
+            const grid = document.getElementById('modalParamGrid');
+            grid.innerHTML = '';
+
+            let paramsObj = item.parameters;
+            if (typeof paramsObj === 'string') {
+                try { paramsObj = JSON.parse(paramsObj); } catch (e) { paramsObj = {}; }
+            }
+
+            for (const [key, val] of Object.entries(paramsObj || {})) {
+                const tile = document.createElement('div');
+                tile.className = 'param-tile';
+                tile.innerHTML = `
+                    <div class="param-key">${key.replace(/_/g, ' ')}</div>
+                    <div class="param-val">${val}</div>
+                `;
+                grid.appendChild(tile);
+            }
+
+            // Raw JSON code block
+            document.getElementById('modalJsonCode').textContent = JSON.stringify(paramsObj, null, 2);
+
+            // Button links
+            document.getElementById('btnGoToBot').href = `/bots?search=${encodeURIComponent(item.symbol)}`;
+            const chartBtn = document.getElementById('btnModalChart');
+            if (chartBtn) chartBtn.href = `/backtest/detail?id=${item.id}`;
+
+            // Show modal
+            document.getElementById('paramModal').style.display = 'flex';
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function closeParamModal(e) {
+            if (e && e.target !== document.getElementById('paramModal')) return;
+            document.getElementById('paramModal').style.display = 'none';
+        }
+
+        function copyModalJson() {
+            const code = document.getElementById('modalJsonCode').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = document.getElementById('btnCopyJson');
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<i data-lucide="check" style="width: 13px; height: 13px; color: var(--accent-green);"></i> Copied!';
+                if (window.lucide) lucide.createIcons();
+                setTimeout(() => {
+                    btn.innerHTML = orig;
+                    if (window.lucide) lucide.createIcons();
+                }, 1800);
+            });
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.getElementById('paramModal').style.display = 'none';
+            }
+        });
+
+        // ── Export to CSV ────────────────────────────────────────────────────
+        function exportCSV() {
+            if (!filteredResults || filteredResults.length === 0) {
+                alert("No data available to export.");
+                return;
+            }
+
+            const headers = [
+                "Rank", "Symbol", "Strategy", "Timeframe", 
+                "Total Trades Opened", "Long Trades", "Short Trades", "Closed Trades", 
+                "Released PnL ($)", "Total Net PnL ($)", 
+                "Win Rate (%)", "Win Trades", "Loss Trades", 
+                "Profit Factor", "Max Drawdown ($)", "Parameters"
+            ];
+            const rows = filteredResults.map((r, idx) => {
+                const pStr = typeof r.parameters === 'object' ? JSON.stringify(r.parameters).replace(/"/g, '""') : (r.parameters || '');
+                return [
+                    idx + 1,
+                    r.symbol,
+                    `"${r.strategy_name}"`,
+                    r.timeframe || '5m',
+                    r.total_trades || 0,
+                    r.total_long_trades || 0,
+                    r.total_short_trades || 0,
+                    r.closed_trades || 0,
+                    (r.released_pnl || 0).toFixed(2),
+                    (r.total_pnl || 0).toFixed(2),
+                    r.win_rate,
+                    r.win_trades,
+                    r.loss_trades,
+                    r.profit_factor,
+                    r.max_drawdown,
+                    `"${pStr}"`
+                ];
+            });
+
+            let csvContent = "data:text/csv;charset=utf-8," 
+                + headers.join(",") + "\n" 
+                + rows.map(e => e.join(",")).join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            const dateStr = new Date().toISOString().slice(0, 10);
+            link.setAttribute("download", `backtest_results_${dateStr}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>

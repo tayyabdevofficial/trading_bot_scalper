@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Market Scan Heatmap</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-grad-start: #0b0f19;
+            --bg-grad-end: #030712;
+            --glass-bg: rgba(17, 24, 39, 0.55);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --accent-blue: #38bdf8;
+            --accent-purple: #a855f7;
+            --accent-green: #10b981;
+            --accent-red: #f43f5e;
+            --accent-yellow: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, var(--bg-grad-start), var(--bg-grad-end));
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 0.5rem;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            min-width: 0;
+        }
+
+        .btn-back {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 0.6rem 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .btn-back:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(-2px);
+        }
+
+        /* Controls */
+        .controls-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .refresh-btn {
+            background: rgba(168, 85, 247, 0.15);
+            color: #d8b4fe;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            border-radius: 8px;
+            padding: 0.55rem 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: var(--accent-purple);
+            color: white;
+        }
+
+        /* Heatmap Grid */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            margin-top: 1rem;
+            min-width: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 1rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        td {
+            padding: 1rem;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            vertical-align: top;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        /* Cell Styling */
+        .heatmap-cell {
+            padding: 0.75rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.03);
+            background: rgba(15, 23, 42, 0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            min-width: 155px;
+            transition: all 0.2s;
+        }
+
+        .heatmap-cell:hover {
+            border-color: rgba(255,255,255,0.08);
+            transform: translateY(-1px);
+        }
+
+        .cell-price {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .metric-badge {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.15rem 0.35rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+            width: fit-content;
+        }
+
+        /* Trend states */
+        .metric-badge.bullish {
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--accent-green);
+        }
+        .metric-badge.bearish {
+            background: rgba(244, 63, 94, 0.12);
+            color: var(--accent-red);
+        }
+
+        /* Chop states */
+        .metric-badge.chop-trend {
+            background: rgba(56, 189, 248, 0.12);
+            color: var(--accent-blue);
+        }
+        .metric-badge.chop-norm {
+            background: rgba(168, 85, 247, 0.12);
+            color: var(--accent-purple);
+        }
+        .metric-badge.chop-range {
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--accent-yellow);
+        }
+
+        /* RSI States */
+        .metric-badge.rsi-ob {
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--accent-green);
+        }
+        .metric-badge.rsi-os {
+            background: rgba(244, 63, 94, 0.12);
+            color: var(--accent-red);
+        }
+        .metric-badge.rsi-mid {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+        }
+
+        .metric-label {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+        }
+
+        .cell-metrics {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+            border-top: 1px solid rgba(255,255,255,0.04);
+            padding-top: 0.3rem;
+            margin-top: 0.15rem;
+        }
+
+        .no-data {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 3rem;
+            font-style: italic;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- WIDGET: header.html -->
+
+
+        <!-- Controls Row -->
+        <div class="controls-row">
+            <button class="refresh-btn" onclick="fetchScanData()">
+                <i data-lucide="refresh-cw"></i> Scan Market
+            </button>
+            <span style="font-size: 0.85rem; color: var(--text-muted);" id="timerLabel">Auto-scanning...</span>
+        </div>
+
+        <!-- Heatmap Grid Card -->
+        <div class="glass-card">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 120px;">Asset Pair</th>
+                            <th>1 Minute</th>
+                            <th>5 Minutes</th>
+                            <th>15 Minutes</th>
+                            <th>1 Hour</th>
+                            <th>4 Hours</th>
+                        </tr>
+                    </thead>
+                    <tbody id="heatmapBody">
+                        <tr>
+                            <td colspan="6" class="no-data">Initializing market scanning matrix...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const IS_ADMIN = false;
+        const IS_TESTNET = false;
+        const apiBase = (typeof IS_TESTNET !== 'undefined' && IS_TESTNET) ? '/api' : (IS_ADMIN ? '/api/admin' : '/api');
+
+        lucide.createIcons();
+
+        const symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "LINKUSDT"];
+        const timeframes = ["1m", "5m", "15m", "1h", "4h"];
+
+        async function fetchScanData() {
+            const btn = document.querySelector('.refresh-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="refresh-cw" class="spin"></i> Scanning...';
+            lucide.createIcons();
+            
+            try {
+                const response = await fetch(apiBase + '/scanner');
+                const data = await response.json();
+                
+                // Map results by symbol and timeframe
+                const matrix = {};
+                symbols.forEach(s => {
+                    matrix[s] = {};
+                    timeframes.forEach(tf => {
+                        matrix[s][tf] = null;
+                    });
+                });
+                
+                data.forEach(cell => {
+                    if (matrix[cell.symbol]) {
+                        matrix[cell.symbol][cell.timeframe] = cell;
+                    }
+                });
+                
+                renderHeatmap(matrix);
+            } catch (e) {
+                console.error("Failed to fetch scanner data", e);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="refresh-cw"></i> Scan Market';
+                lucide.createIcons();
+            }
+        }
+
+        function renderHeatmap(matrix) {
+            const tbody = document.getElementById('heatmapBody');
+            
+            tbody.innerHTML = symbols.map(symbol => {
+                const cellsHtml = timeframes.map(tf => {
+                    const cell = matrix[symbol][tf];
+                    if (!cell || cell.price === 0) {
+                        return `<td><div class="heatmap-cell"><span class="no-data">No data</span></div></td>`;
+                    }
+                    
+                    const priceFormatted = cell.price >= 100 
+                        ? cell.price.toFixed(2) 
+                        : (cell.price >= 1 ? cell.price.toFixed(4) : cell.price.toFixed(6));
+                        
+                    const trendClass = cell.trend.toLowerCase();
+                    
+                    // Chop styling
+                    let chopClass = 'chop-norm';
+                    let chopRegime = 'Normal';
+                    if (cell.chop > 60) {
+                        chopClass = 'chop-range';
+                        chopRegime = 'Choppy';
+                    } else if (cell.chop < 40) {
+                        chopClass = 'chop-trend';
+                        chopRegime = 'Trending';
+                    }
+                    
+                    // RSI styling
+                    let rsiClass = 'rsi-mid';
+                    let rsiLabel = 'Neutral';
+                    if (cell.rsi > 70) {
+                        rsiClass = 'rsi-ob';
+                        rsiLabel = 'Overbought';
+                    } else if (cell.rsi < 30) {
+                        rsiClass = 'rsi-os';
+                        rsiLabel = 'Oversold';
+                    }
+
+                    return `
+                        <td>
+                            <div class="heatmap-cell">
+                                <span class="cell-price">$${priceFormatted}</span>
+                                <span class="metric-badge ${trendClass}">${cell.trend}</span>
+                                <div class="cell-metrics">
+                                    <span class="metric-label">CHOP: <strong class="metric-badge ${chopClass}" style="padding:0; background:none;">${cell.chop.toFixed(1)} (${chopRegime})</strong></span>
+                                    <span class="metric-label">RSI: <strong class="metric-badge ${rsiClass}" style="padding:0; background:none;">${cell.rsi.toFixed(1)} (${rsiLabel})</strong></span>
+                                    <span class="metric-label">ATR Vol: <strong>${cell.atr_pct.toFixed(2)}%</strong></span>
+                                </div>
+                            </div>
+                        </td>
+                    `;
+                }).join('');
+
+                return `
+                    <tr>
+                        <td style="vertical-align: middle;">
+                            <strong style="color: var(--accent-purple); font-size: 1rem;">${symbol}</strong>
+                        </td>
+                        ${cellsHtml}
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Highlight active navbar tab & subtitle
+        const currentPath = window.location.pathname;
+        const headerSubtitle = document.getElementById('headerSubtitle');
+        if (headerSubtitle) {
+            headerSubtitle.textContent = 'Multi-timeframe technical indicator matrix for major asset pairs';
+        }
+        document.title = "Market Scanner - Trading Panel";
+
+        document.querySelectorAll('.header-btn').forEach(btn => btn.classList.remove('active'));
+        if (currentPath.includes('/bots')) {
+            document.getElementById('nav-bots')?.classList.add('active');
+        } else if (currentPath.includes('/positions')) {
+            document.getElementById('nav-positions')?.classList.add('active');
+        } else if (currentPath.includes('/closed-positions')) {
+            document.getElementById('nav-closed')?.classList.add('active');
+        } else if (currentPath.includes('/scanner')) {
+            document.getElementById('nav-scanner')?.classList.add('active');
+        } else {
+            document.getElementById('nav-dashboard')?.classList.add('active');
+        }
+
+
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+
+        // Auto Refresh setup (every 10 seconds)
+        fetchScanData();
+        setInterval(fetchScanData, 10000);
+    </script>
+
+</body>
+</html>

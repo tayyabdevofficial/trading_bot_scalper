@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot Detail Info - Tayyab Scalper</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-grad-start: #0b0f19;
+            --bg-grad-end: #030712;
+            --glass-bg: rgba(17, 24, 39, 0.55);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --accent-blue: #38bdf8;
+            --accent-purple: #a855f7;
+            --accent-green: #10b981;
+            --accent-red: #f43f5e;
+            --accent-yellow: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, var(--bg-grad-start), var(--bg-grad-end));
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 0.5rem;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .detail-section h4 {
+            color: var(--accent-purple);
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.35rem;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem 1.5rem;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .detail-label {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .detail-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        /* Tabs Styling */
+        .tabs-header {
+            display: flex;
+            gap: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 1.5rem;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: inherit;
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            position: relative;
+            transition: color 0.2s;
+        }
+
+        .tab-btn:hover, .tab-btn.active {
+            color: var(--text-main);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--accent-purple);
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        /* Table Design */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        td {
+            padding: 0.85rem 1rem;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .badge-buy {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .badge-sell {
+            background: rgba(244, 63, 94, 0.15);
+            color: var(--accent-red);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .pnl-text {
+            font-weight: 700;
+        }
+        .pnl-text.pos { color: var(--accent-green); }
+        .pnl-text.neg { color: var(--accent-red); }
+
+        .no-data {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 2.5rem;
+            font-style: italic;
+        }
+
+        .exit-reason-badge {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- WIDGET: header.html -->
+
+        <!-- Header / Back Link -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <h2 id="botHeaderTitle" style="font-size:1.6rem; font-weight:700;">Bot Details</h2>
+            <a href="/bots" class="header-btn" style="font-weight:600;"><i data-lucide="arrow-left"></i> Back to Bots</a>
+        </div>
+
+
+        <div class="grid-2">
+            <!-- Bot Parameters -->
+            <div class="glass-card detail-section">
+                <h4>Bot Instance Parameters</h4>
+                <div class="detail-grid" id="paramsGrid">
+                    <!-- Dynamic params -->
+                </div>
+            </div>
+
+            <!-- Bot Stats Overview -->
+            <div class="glass-card detail-section">
+                <h4>Performance Statistics</h4>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <span class="detail-label">Status</span>
+                        <span class="detail-value" id="statStatus">—</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Total Trades</span>
+                        <span class="detail-value" id="statTotalTrades">0</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Win Rate</span>
+                        <span class="detail-value" id="statWinRate" style="color:var(--accent-blue);">0%</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Net Realized PnL</span>
+                        <span class="detail-value" id="statNetPnl">—</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Profit / Loss Trades</span>
+                        <span class="detail-value" id="statProfitLoss">0 / 0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Position / History Tabs -->
+        <div class="glass-card">
+            <div class="tabs-header">
+                <button class="tab-btn active" onclick="switchTab('activePosTab', this)">Active Positions</button>
+                <button class="tab-btn" onclick="switchTab('closedPosTab', this)">Closed Positions History</button>
+            </div>
+
+            <!-- Active Positions Pane -->
+            <div id="activePosTab" class="tab-pane active">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Open Time (PKT)</th>
+                                <th>Side</th>
+                                <th>Quantity</th>
+                                <th>Entry Price</th>
+                                <th>Current Price</th>
+                                <th>Stop Loss</th>
+                                <th>Take Profit Targets</th>
+                                <th>Status / Alerts</th>
+                                <th>Unrealized PnL ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activePosTableBody">
+                            <tr><td colspan="9" class="no-data">No active positions.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Closed Positions Pane -->
+            <div id="closedPosTab" class="tab-pane">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Open / Close Time</th>
+                                <th>Bot ID</th>
+                                <th>Symbol</th>
+                                <th>Side</th>
+                                <th>Quantity</th>
+                                <th>Open Price</th>
+                                <th>Close Price</th>
+                                <th>Size</th>
+                                <th>TPs Hit</th>
+                                <th>Exit Reason</th>
+                                <th>Realized PnL ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="closedPosTableBody">
+                            <tr><td colspan="11" class="no-data">No closed positions history.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WIDGET: tp_targets_modal.html -->
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const botId = parseInt(urlParams.get('bot_id'));
+
+        const IS_ADMIN = false;
+        const IS_TESTNET = false;
+        const apiBase = (typeof IS_TESTNET !== 'undefined' && IS_TESTNET) ? '/api' : (IS_ADMIN ? '/api/admin' : '/api');
+
+        let botTradesList = [];
+
+        function showTpTargetsModal(symbol, side, targets) {
+            const modal = document.getElementById('tpTargetsModal');
+            if (!modal) return;
+            const title = document.getElementById('tpModalTitle');
+            const content = document.getElementById('tpModalContent');
+            
+            title.textContent = `Take Profit Targets — ${symbol} (${side})`;
+            
+            let targetsHtml = `
+                <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                    ${targets.map((t, idx) => {
+                        const hitStyle = t.hit ? 'color: var(--accent-green); font-weight:700;' : 'color: var(--text-muted);';
+                        const hitIcon = t.hit ? '✔ HIT' : 'PENDING';
+                        return `
+                            <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:0.75rem 1rem; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+                                <span>Target #${idx+1}: <strong style="color:#f8fafc;">$${formatPrice(t.target_price)}</strong></span>
+                                <span style="${hitStyle}">${hitIcon} (${t.pct}% qty)</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+            
+            content.innerHTML = targetsHtml;
+            modal.style.display = 'flex';
+        }
+
+        function showClosedTpModal(idx) {
+            const t = botTradesList[idx];
+            if (t && t.tp_targets) {
+                showTpTargetsModal(t.symbol, t.side, t.tp_targets);
+            }
+        }
+
+        function closeTpTargetsModal() {
+            const modal = document.getElementById('tpTargetsModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        // Highlight active navbar tab & subtitle
+        const currentPath = window.location.pathname;
+        const headerSubtitle = document.getElementById('headerSubtitle');
+        if (headerSubtitle) {
+            headerSubtitle.textContent = 'Advanced Real-time Strategy Execution & Instance Monitoring Dashboard';
+        }
+        document.title = "Bot Info - Trading Panel";
+
+        document.querySelectorAll('.header-btn').forEach(btn => btn.classList.remove('active'));
+        if (currentPath.includes('/bots')) {
+            document.getElementById('nav-bots')?.classList.add('active');
+        } else if (currentPath.includes('/positions')) {
+            document.getElementById('nav-positions')?.classList.add('active');
+        } else if (currentPath.includes('/closed-positions')) {
+            document.getElementById('nav-closed')?.classList.add('active');
+        } else if (currentPath.includes('/scanner')) {
+            document.getElementById('nav-scanner')?.classList.add('active');
+        } else {
+            document.getElementById('nav-dashboard')?.classList.add('active');
+        }
+
+
+
+        function formatPrice(val) {
+            if (val === undefined || val === null || isNaN(val) || Number(val) === 0) return '—';
+            return parseFloat(Number(val).toFixed(10)).toString();
+        }
+
+        function switchTab(paneId, btn) {
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(paneId).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        async function loadBotInfo() {
+            if (isNaN(botId)) return;
+
+            try {
+                // Fetch bots list
+                const botsResp = await fetch(apiBase + '/bots');
+                const bots = await botsResp.json();
+                const bot = bots.find(b => b.id === botId);
+
+                // Fetch closed trades
+                const closedResp = await fetch(apiBase + '/closed-positions');
+                const closedPositions = await closedResp.json();
+                const botTrades = closedPositions.filter(t => t.bot_id === botId);
+
+                if (!bot) {
+                    document.getElementById('botHeaderTitle').textContent = `Bot #${botId} Not Found`;
+                    return;
+                }
+
+                // Render Header
+                document.getElementById('botHeaderTitle').textContent = `Bot #${bot.id} Details (${bot.symbol})`;
+
+                // Render Params Grid
+                const paramsGrid = document.getElementById('paramsGrid');
+                let paramsHtml = '';
+                for (const [key, val] of Object.entries(bot.parameters)) {
+                    paramsHtml += `
+                        <div class="detail-item">
+                            <span class="detail-label">${key.replace(/_/g, ' ').toUpperCase()}</span>
+                            <span class="detail-value">${val}</span>
+                        </div>
+                    `;
+                }
+                paramsGrid.innerHTML = paramsHtml || '<div style="color:var(--text-muted);font-size:0.85rem;">No parameters.</div>';
+
+                // Render Performance Metrics
+                const totalTrades = botTrades.length;
+                const profitTrades = botTrades.filter(t => t.realized_pnl > 0);
+                const lossTrades = botTrades.filter(t => t.realized_pnl < 0);
+                const winRate = totalTrades > 0 ? ((profitTrades.length / totalTrades) * 100).toFixed(1) : '0.0';
+                const netPnl = botTrades.reduce((acc, t) => acc + t.realized_pnl, 0.0);
+
+                const statusVal = bot.is_running ? '<span style="color:var(--accent-green);font-weight:700;">⬤ RUNNING</span>' : '<span style="color:var(--accent-red);font-weight:700;">⬤ STOPPED</span>';
+                document.getElementById('statStatus').innerHTML = statusVal;
+                document.getElementById('statTotalTrades').textContent = totalTrades;
+                document.getElementById('statWinRate').textContent = `${winRate}%`;
+                
+                const pnlSign = netPnl >= 0 ? '+' : '';
+                const pnlClass = netPnl >= 0 ? 'pnl-text pos' : 'pnl-text neg';
+                document.getElementById('statNetPnl').innerHTML = `<span class="${pnlClass}">${pnlSign}$${netPnl.toFixed(2)}</span>`;
+                document.getElementById('statProfitLoss').innerHTML = `<span style="color:var(--accent-green);">${profitTrades.length}</span> / <span style="color:var(--accent-red);">${lossTrades.length}</span>`;
+
+                // Render Active Positions
+                const activePosBody = document.getElementById('activePosTableBody');
+                if (bot.position && bot.position.length > 0) {
+                    const positions = Array.isArray(bot.position) ? bot.position : [bot.position];
+                    activePosBody.innerHTML = positions.map(pos => {
+                        let pnl = 0.0;
+                        if (bot.latest_price > 0) {
+                            if (pos.side === 'BUY') {
+                                pnl = (bot.latest_price - pos.entry_price) * pos.qty;
+                            } else {
+                                pnl = (pos.entry_price - bot.latest_price) * pos.qty;
+                            }
+                        }
+                        const pnlClass = pnl >= 0 ? 'pnl-text pos' : 'pnl-text neg';
+                        const formattedPnl = pnl >= 0 ? `+$${pnl.toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`;
+
+                        let tpDisplay = pos.tp_price ? '$' + formatPrice(pos.tp_price) : '—';
+                        if (pos.tp_targets && pos.tp_targets.length > 0) {
+                            tpDisplay = pos.tp_targets.map(t => `$${formatPrice(t.target_price)} (${t.pct}% qty, ${t.hit?'HIT':'PENDING'})`).join('<br/>');
+                        }
+
+                        // Status Alerts (e.g. TP limit orders failed)
+                        let alertBadge = '<span style="color:var(--text-muted);font-size:0.8rem;">Standard</span>';
+                        if (pos.status === 'TP_ORDERS_FAILED') {
+                            alertBadge = `
+                                <div style="display:flex; flex-direction:column; gap:0.35rem; align-items:flex-start;">
+                                    <span style="background:rgba(244,63,94,0.15);color:var(--accent-red);padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;font-weight:700;">⚠ TP ORDERS FAILED</span>
+                                    <button onclick="retryTpOrders(${bot.id}, this)" style="background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.3); border-radius:4px; padding:0.2rem 0.4rem; font-size:0.72rem; color:var(--accent-blue); font-weight:600; cursor:pointer; font-family:inherit;">Retry TP</button>
+                                </div>
+                            `;
+                        } else if (pos.status) {
+                            alertBadge = `<span style="background:rgba(245,158,11,0.15);color:var(--accent-yellow);padding:0.2rem 0.5rem;border-radius:4px;font-size:0.75rem;font-weight:700;">${pos.status}</span>`;
+                        }
+
+                        // Format timestamp to Pakistan Time (GMT+5)
+                        let openTimeDisplay = '—';
+                        if (pos.timestamp) {
+                            try {
+                                const utcDate = new Date(pos.timestamp);
+                                openTimeDisplay = utcDate.toLocaleString("en-US", { timeZone: "Asia/Karachi" });
+                            } catch (e) {
+                                openTimeDisplay = pos.timestamp;
+                            }
+                        }
+
+                        return `
+                            <tr>
+                                <td>${openTimeDisplay}</td>
+                                <td><span class="${pos.side==='BUY'?'badge-buy':'badge-sell'}">${pos.side==='BUY'?'LONG':'SHORT'}</span></td>
+                                <td>${pos.qty}</td>
+                                <td>$${formatPrice(pos.entry_price)}</td>
+                                <td>$${formatPrice(bot.latest_price)}</td>
+                                <td>$${pos.sl_price ? formatPrice(pos.sl_price) : '—'}</td>
+                                <td style="font-size:0.8rem;line-height:1.4;">${tpDisplay}</td>
+                                <td>${alertBadge}</td>
+                                <td><span class="${pnlClass}">${formattedPnl}</span></td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                } else {
+                    activePosBody.innerHTML = '<tr><td colspan="9" class="no-data">No active positions.</td></tr>';
+                }
+
+                // Render Closed Positions
+                const closedPosBody = document.getElementById('closedPosTableBody');
+                if (botTrades.length > 0) {
+                    botTradesList = botTrades;
+                    closedPosBody.innerHTML = botTrades.map((t, idx) => {
+                        let displaySide = t.side || 'LONG';
+                        if (displaySide === 'BUY') displaySide = 'LONG';
+                        if (displaySide === 'SELL') displaySide = 'SHORT';
+                        const sideClass = displaySide === 'LONG' ? 'badge-buy' : 'badge-sell';
+                        const pnlClass = t.realized_pnl >= 0 ? 'pnl-text pos' : 'pnl-text neg';
+                        const formattedPnl = t.realized_pnl >= 0 ? `+$${t.realized_pnl.toFixed(2)}` : `-$${Math.abs(t.realized_pnl).toFixed(2)}`;
+
+                        let openTime = '—';
+                        if (t.open_timestamp) {
+                            try {
+                                openTime = new Date(t.open_timestamp).toLocaleString("en-US", { timeZone: "Asia/Karachi" });
+                            } catch (e) { openTime = t.open_timestamp; }
+                        }
+                        let closeTime = '—';
+                        if (t.timestamp) {
+                            try {
+                                closeTime = new Date(t.timestamp).toLocaleString("en-US", { timeZone: "Asia/Karachi" });
+                            } catch (e) { closeTime = t.timestamp; }
+                        }
+
+                        const openPrice = t.open_price || 0.0;
+                        const leverage = t.leverage || 5;
+                        const sizeWithLev = openPrice * t.qty;
+                        const sizeWithoutLev = sizeWithLev / leverage;
+
+                        const tpsHit = t.tps_hit !== undefined ? t.tps_hit : 0;
+                        const tpsTotal = t.tps_total !== undefined ? t.tps_total : 1;
+
+                        let tpDisplay = `<span style="color: var(--accent-green);">${tpsHit}/${tpsTotal} hit</span>`;
+                        if (t.tp_targets && t.tp_targets.length > 0) {
+                            tpDisplay = `<span style="color: var(--accent-green); cursor: pointer; text-decoration: underline;" onclick="showClosedTpModal(${idx})">${tpsHit}/${tpsTotal} hit</span>`;
+                        }
+
+                        return `
+                            <tr>
+                                <td data-label="Open / Close Time" style="font-size: 0.8rem; line-height: 1.3;">
+                                    <span style="color: var(--accent-blue)">Open:</span> ${openTime}<br/>
+                                    <span style="color: var(--text-muted)">Close:</span> ${closeTime}
+                                </td>
+                                <td data-label="Bot ID"><a href="/bot-info?bot_id=${t.bot_id}" style="color: var(--accent-purple); font-weight: 700; text-decoration: underline;">#${t.bot_id} (${t.strategy_name || 'Deleted Bot'})</a></td>
+                                <td data-label="Symbol"><strong>${t.symbol}</strong></td>
+                                <td data-label="Side"><span class="${sideClass}">${displaySide}</span></td>
+                                <td data-label="Quantity">${t.qty} units</td>
+                                <td data-label="Open Price">$${formatPrice(openPrice)}</td>
+                                <td data-label="Close Price">$${formatPrice(t.price)}</td>
+                                <td data-label="Size">$${sizeWithLev.toFixed(2)} / <strong style="color: var(--accent-blue)">$${sizeWithoutLev.toFixed(2)}</strong></td>
+                                <td data-label="TPs Hit">${tpDisplay}</td>
+                                <td data-label="Exit Reason"><span class="exit-reason-badge">${t.type}</span></td>
+                                <td data-label="Realized PnL ($)"><span class="${pnlClass}">${formattedPnl}</span></td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    closedPosBody.innerHTML = '<tr><td colspan="11" class="no-data">No closed positions history.</td></tr>';
+                }
+
+            } catch (e) {
+                console.error("Error loading bot details", e);
+            }
+        }
+
+        async function retryTpOrders(botId, btnEl) {
+            btnEl.disabled = true;
+            btnEl.textContent = 'Retrying...';
+            try {
+                const resp = await fetch(apiBase + `/bots/${botId}/retry-tp`, {
+                    method: 'POST'
+                });
+                const data = await resp.json();
+                if (resp.ok && data.status === 'success') {
+                    alert('TP Limit Orders successfully placed on Binance!');
+                    loadBotInfo();
+                } else {
+                    alert('Failed to place TP orders: ' + (data.detail || 'Binance rate limit or API issue.'));
+                    btnEl.disabled = false;
+                    btnEl.textContent = 'Retry TP';
+                }
+            } catch(e) {
+                alert('Connection/Server error: ' + e);
+                btnEl.disabled = false;
+                btnEl.textContent = 'Retry TP';
+            }
+        }
+
+        // Setup dynamic view & icons loading
+        loadBotInfo();
+        setInterval(loadBotInfo, 3000);
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+    </script>
+
+
+
+</body>
+</html>
