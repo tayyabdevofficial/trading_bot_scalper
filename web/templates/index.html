@@ -2346,12 +2346,10 @@
                 if (tfFilter !== 'all') qParams.append('timeframe', tfFilter);
                 if (searchQuery) qParams.append('search', searchQuery);
 
-                // Fetch paginated bots & top metrics in parallel
-                const [botsResp, balResp, posResp, closedResp] = await Promise.all([
+                // Fetch paginated bots & master overview stats in parallel
+                const [botsResp, statsResp] = await Promise.all([
                     fetch(apiBase + '/bots?' + qParams.toString()),
-                    fetch(apiBase + '/balance').catch(() => null),
-                    fetch(apiBase + '/positions?all_items=true').catch(() => null),
-                    fetch(apiBase + '/closed-positions?page=1&page_size=1').catch(() => null)
+                    fetch(apiBase + '/overview-stats').catch(() => null)
                 ]);
 
                 const botsData = await botsResp.json();
@@ -2365,90 +2363,99 @@
                     totalBotPages = Math.max(1, Math.ceil(totalBotCount / BOT_PAGE_SIZE));
                 }
 
-                // 1. Balance Metrics
-                if (balResp && balResp.ok) {
-                    const balData = await balResp.json();
-                    document.getElementById('totalBalance').innerText = `$${parseFloat(balData.total_balance || 500).toFixed(2)}`;
-                    document.getElementById('availableBalance').innerText = `$${parseFloat(balData.available_balance || 500).toFixed(2)}`;
-                }
-
-                // 2. Open Positions & Unrealized PnL Metrics
-                if (posResp && posResp.ok) {
-                    const positions = await posResp.json();
-                    const openPositions = Array.isArray(positions) ? positions : (positions.items || []);
+                // Update Master Overview Cards from overview-stats
+                if (statsResp && statsResp.ok) {
+                    const overview = await statsResp.json();
                     
-                    let mainnetOpenCount = 0;
-                    let testnetOpenCount = 0;
-                    let mainnetUnrealizedPnl = 0.0;
-                    let testnetUnrealizedPnl = 0.0;
+                    // Card 1: Balance Metrics
+                    if (overview.balance) {
+                        const totalBal = overview.balance.total_balance || 0;
+                        const availBal = overview.balance.available_balance || 0;
+                        const totalBalEl = document.getElementById('totalBalance');
+                        if (totalBalEl) totalBalEl.innerText = `$${totalBal.toFixed(2)}`;
+                        const availBalEl = document.getElementById('availableBalance');
+                        if (availBalEl) availBalEl.innerText = `$${availBal.toFixed(2)}`;
+                    }
 
-                    openPositions.forEach(({ bot: b, pos }) => {
-                        const isMainnet = (b.network || 'mainnet').toLowerCase() === 'mainnet';
-                        if (isMainnet) mainnetOpenCount++; else testnetOpenCount++;
+                    // Card 2: Bots breakdown
+                    if (overview.bots) {
+                        const activeBotsEl = document.getElementById('activeBotsCount');
+                        if (activeBotsEl) activeBotsEl.innerText = overview.bots.active;
+                        const totalBotsEl = document.getElementById('totalBotsCount');
+                        if (totalBotsEl) totalBotsEl.innerText = overview.bots.total;
+                        const mainnetBotsEl = document.getElementById('mainnetBotsCount');
+                        if (mainnetBotsEl) mainnetBotsEl.innerText = `${overview.bots.mainnet_running}/${overview.bots.mainnet_total}`;
+                        const testnetBotsEl = document.getElementById('testnetBotsCount');
+                        if (testnetBotsEl) testnetBotsEl.innerText = `${overview.bots.testnet_running}/${overview.bots.testnet_total}`;
+                    }
 
-                        if (b.latest_price > 0 && pos.entry_price > 0) {
-                            let posPnl = 0.0;
-                            if ((pos.side || '').toUpperCase() === 'BUY') {
-                                posPnl = (b.latest_price - pos.entry_price) * pos.qty;
-                            } else {
-                                posPnl = (pos.entry_price - b.latest_price) * pos.qty;
-                            }
-                            if (isMainnet) mainnetUnrealizedPnl += posPnl; else testnetUnrealizedPnl += posPnl;
+                    // Card 3: Open Positions
+                    if (overview.open_positions) {
+                        const activePosEl = document.getElementById('activePositionsCount');
+                        if (activePosEl) activePosEl.innerText = overview.open_positions.total;
+                        const mainnetOpenPosEl = document.getElementById('mainnetOpenPositionsCount');
+                        if (mainnetOpenPosEl) mainnetOpenPosEl.innerText = overview.open_positions.mainnet;
+                        const testnetOpenPosEl = document.getElementById('testnetOpenPositionsCount');
+                        if (testnetOpenPosEl) testnetOpenPosEl.innerText = overview.open_positions.testnet;
+
+                        // Card 4: Unrealized PnL Metrics
+                        const totalUnPnl = overview.open_positions.total_unrealized_pnl || 0.0;
+                        const mainnetUnPnl = overview.open_positions.mainnet_unrealized_pnl || 0.0;
+                        const testnetUnPnl = overview.open_positions.testnet_unrealized_pnl || 0.0;
+
+                        const unPnlElem = document.getElementById('unrealizedPnlVal');
+                        if (unPnlElem) {
+                            unPnlElem.innerText = (totalUnPnl >= 0 ? '+' : '') + '$' + totalUnPnl.toFixed(2);
+                            unPnlElem.style.color = totalUnPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
                         }
-                    });
-
-                    const totalOpenPositions = mainnetOpenCount + testnetOpenCount;
-                    document.getElementById('activePositionsCount').innerText = totalOpenPositions;
-                    const mainnetOpenPosEl = document.getElementById('mainnetOpenPositionsCount');
-                    if (mainnetOpenPosEl) mainnetOpenPosEl.innerText = mainnetOpenCount;
-                    const testnetOpenPosEl = document.getElementById('testnetOpenPositionsCount');
-                    if (testnetOpenPosEl) testnetOpenPosEl.innerText = testnetOpenCount;
-
-                    const totalUnrealizedPnl = mainnetUnrealizedPnl + testnetUnrealizedPnl;
-                    const unPnlElem = document.getElementById('unrealizedPnlVal');
-                    if (unPnlElem) {
-                        unPnlElem.innerText = (totalUnrealizedPnl >= 0 ? '+' : '') + '$' + totalUnrealizedPnl.toFixed(2);
-                        unPnlElem.style.color = totalUnrealizedPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                        const mainnetUnPnlEl = document.getElementById('mainnetUnrealizedPnl');
+                        if (mainnetUnPnlEl) {
+                            mainnetUnPnlEl.innerText = (mainnetUnPnl >= 0 ? '+' : '') + '$' + mainnetUnPnl.toFixed(2);
+                            mainnetUnPnlEl.style.color = mainnetUnPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                        }
+                        const testnetUnPnlEl = document.getElementById('testnetUnrealizedPnl');
+                        if (testnetUnPnlEl) {
+                            testnetUnPnlEl.innerText = (testnetUnPnl >= 0 ? '+' : '') + '$' + testnetUnPnl.toFixed(2);
+                            testnetUnPnlEl.style.color = testnetUnPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                        }
                     }
-                    const mainnetUnPnlEl = document.getElementById('mainnetUnrealizedPnl');
-                    if (mainnetUnPnlEl) {
-                        mainnetUnPnlEl.innerText = (mainnetUnrealizedPnl >= 0 ? '+' : '') + '$' + mainnetUnrealizedPnl.toFixed(2);
-                        mainnetUnPnlEl.style.color = mainnetUnrealizedPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-                    }
-                    const testnetUnPnlEl = document.getElementById('testnetUnrealizedPnl');
-                    if (testnetUnPnlEl) {
-                        testnetUnPnlEl.innerText = (testnetUnrealizedPnl >= 0 ? '+' : '') + '$' + testnetUnrealizedPnl.toFixed(2);
-                        testnetUnPnlEl.style.color = testnetUnrealizedPnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+
+                    // Card 5 & 6: Closed Positions & Realized PnL Summary
+                    if (overview.closed_positions) {
+                        const cp = overview.closed_positions;
+                        const closedPosEl = document.getElementById('closedPositionsCount');
+                        if (closedPosEl) closedPosEl.innerText = cp.total;
+                        const mainnetClosedEl = document.getElementById('mainnetClosedCount');
+                        if (mainnetClosedEl) mainnetClosedEl.innerText = cp.mainnet;
+                        const testnetClosedEl = document.getElementById('testnetClosedCount');
+                        if (testnetClosedEl) testnetClosedEl.innerText = cp.testnet;
+
+                        const netRealizedPnlElem = document.getElementById('netRealizedPnl');
+                        if (netRealizedPnlElem) {
+                            netRealizedPnlElem.innerText = (cp.net_realized_pnl >= 0 ? '+' : '') + '$' + cp.net_realized_pnl.toFixed(2);
+                            netRealizedPnlElem.style.color = cp.net_realized_pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                        }
+                        const mainnetRealizedPnlEl = document.getElementById('mainnetRealizedPnl');
+                        if (mainnetRealizedPnlEl) {
+                            mainnetRealizedPnlEl.innerText = (cp.mainnet_realized_pnl >= 0 ? '+' : '') + '$' + cp.mainnet_realized_pnl.toFixed(2);
+                            mainnetRealizedPnlEl.style.color = cp.mainnet_realized_pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                        }
+                        const testnetRealizedPnlEl = document.getElementById('testnetRealizedPnl');
+                        if (testnetRealizedPnlEl) {
+                            testnetRealizedPnlEl.innerText = (cp.testnet_realized_pnl >= 0 ? '+' : '') + '$' + cp.testnet_realized_pnl.toFixed(2);
+                            testnetRealizedPnlEl.style.color = cp.testnet_realized_pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                        }
+
+                        const profitCountEl = document.getElementById('profitCount');
+                        if (profitCountEl) profitCountEl.innerText = cp.profit_count;
+                        const totalProfitEl = document.getElementById('totalProfit');
+                        if (totalProfitEl) totalProfitEl.innerText = '+$' + cp.profit_sum.toFixed(2);
+                        const lossCountEl = document.getElementById('lossCount');
+                        if (lossCountEl) lossCountEl.innerText = cp.loss_count;
+                        const totalLossEl = document.getElementById('totalLoss');
+                        if (totalLossEl) totalLossEl.innerText = '-$' + cp.loss_sum.toFixed(2);
                     }
                 }
-
-                // 3. Closed Positions & Realized PnL Summary
-                if (closedResp && closedResp.ok) {
-                    const closedData = await closedResp.json();
-                    const stats = closedData.stats || {};
-                    const netPnLVal = stats.total_pnl || 0.0;
-                    const totalClosedCount = stats.total_trades || 0;
-
-                    document.getElementById('closedPositionsCount').innerText = totalClosedCount;
-                    const netRealizedPnlElem = document.getElementById('netRealizedPnl');
-                    if (netRealizedPnlElem) {
-                        netRealizedPnlElem.innerText = (netPnLVal >= 0 ? '+' : '') + '$' + netPnLVal.toFixed(2);
-                        netRealizedPnlElem.style.color = netPnLVal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-                    }
-
-                    const profitCountVal = stats.profit_count || 0;
-                    const totalProfitVal = stats.profit_sum || 0.0;
-                    const lossCountVal = stats.loss_count || 0;
-                    const totalLossVal = stats.loss_sum || 0.0;
-
-                    document.getElementById('profitCount').innerText = profitCountVal;
-                    document.getElementById('totalProfit').innerText = '+$' + totalProfitVal.toFixed(2);
-                    document.getElementById('lossCount').innerText = lossCountVal;
-                    document.getElementById('totalLoss').innerText = '-$' + totalLossVal.toFixed(2);
-                }
-
-                // Sync total bot counts
-                document.getElementById('totalBotsCount').innerText = totalBotCount;
 
                 // Render paginated bots table
                 renderBotsTable();

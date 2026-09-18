@@ -681,22 +681,181 @@ async def get_strategies():
 @app.get("/api/balance")
 async def get_wallet_balance():
     shared_balance = float(db.get_state("virtual_balance", 500.0))
-    all_bots = db.get_bots()
     total_margin = 0.0
-    for bot in all_bots:
-        pos_val = db.get_state(f"active_position_bot_{bot['id']}")
-        if pos_val:
-            positions = pos_val if isinstance(pos_val, list) else [pos_val]
-            leverage = int(bot["parameters"].get("leverage", 20))
-            for pos in positions:
-                position_value = pos["entry_price"] * pos["qty"]
-                margin = position_value / leverage
-                total_margin += margin
+    active_bot_ids = set(manager.active_bots.keys()) if manager and manager.active_bots else set()
+    
+    if manager and manager.active_bots:
+        for b_id, act_b in manager.active_bots.items():
+            pos_val = getattr(act_b.execution, "active_position", None)
+            if pos_val:
+                positions = pos_val if isinstance(pos_val, list) else [pos_val]
+                leverage = int(getattr(act_b, "parameters", {}).get("leverage", 20))
+                for pos in positions:
+                    position_value = float(pos.get("entry_price") or 0.0) * float(pos.get("qty") or 0.0)
+                    total_margin += (position_value / leverage)
+
+    saved_positions_map = db.get_all_active_positions_from_state()
+    all_bots = db.get_bots()
+    for bid, pos_list in saved_positions_map.items():
+        if bid not in active_bot_ids:
+            bot_meta = next((b for b in all_bots if b["id"] == bid), None)
+            leverage = int(bot_meta["parameters"].get("leverage", 20)) if bot_meta and "parameters" in bot_meta else 20
+            for pos in pos_list:
+                position_value = float(pos.get("entry_price") or 0.0) * float(pos.get("qty") or 0.0)
+                total_margin += (position_value / leverage)
+
     avail = max(0.0, shared_balance - total_margin)
     return {
         "total_balance": shared_balance,
         "available_balance": avail,
         "used_margin": total_margin
+    }
+
+@app.get("/api/overview-stats")
+async def get_overview_stats():
+    # 1. Bots breakdown
+    all_bots = db.get_bots()
+    total_bots = len(all_bots)
+    mainnet_total = sum(1 for b in all_bots if (b.get("network") or "mainnet").lower() == "mainnet")
+    testnet_total = sum(1 for b in all_bots if (b.get("network") or "").lower() == "testnet")
+    
+    active_bot_ids = set(manager.active_bots.keys()) if manager and manager.active_bots else set()
+    active_bots_count = len(active_bot_ids)
+    mainnet_running = 0
+    testnet_running = 0
+    if manager and manager.active_bots:
+        for bid, ab in manager.active_bots.items():
+            bnet = getattr(ab, "network", "mainnet").lower()
+            if bnet == "mainnet":
+                mainnet_running += 1
+            else:
+                testnet_running += 1
+
+    # 2. Balance & Margin breakdown
+    shared_balance = float(db.get_state("virtual_balance", 500.0))
+    total_margin = 0.0
+
+    # 3. Open Positions & Unrealized PnL breakdown
+    mainnet_open_count = 0
+    testnet_open_count = 0
+    mainnet_unrealized_pnl = 0.0
+    testnet_unrealized_pnl = 0.0
+
+    # From in-memory active bots
+    if manager and manager.active_bots:
+        for bot_id, act_b in manager.active_bots.items():
+            bnet = getattr(act_b, "network", "mainnet").lower()
+            pos_val = getattr(act_b.execution, "active_position", None)
+            if pos_val:
+                positions = pos_val if isinstance(pos_val, list) else [pos_val]
+                leverage = int(getattr(act_b, "parameters", {}).get("leverage", 20))
+                latest_price = act_b.data_engine.klines[-1]["close"] if act_b.data_engine.klines else 0.0
+                for pos in positions:
+                    if bnet == "mainnet":
+                        mainnet_open_count += 1
+                    else:
+                        testnet_open_count += 1
+                    
+                    pos_entry = float(pos.get("entry_price") or 0.0)
+                    pos_qty = float(pos.get("qty") or 0.0)
+                    if pos_entry > 0 and pos_qty > 0:
+                        position_value = pos_entry * pos_qty
+                        total_margin += (position_value / leverage)
+                        if latest_price > 0:
+                            side = (pos.get("side") or "").upper()
+                            pos_pnl = (latest_price - pos_entry) * pos_qty if side == "BUY" else (pos_entry - latest_price) * pos_qty
+                            if bnet == "mainnet":
+                                mainnet_unrealized_pnl += pos_pnl
+                            else:
+                                testnet_unrealized_pnl += pos_pnl
+
+    # From DB state for stopped bots
+    saved_positions_map = db.get_all_active_positions_from_state()
+    for bid, pos_list in saved_positions_map.items():
+        if bid not in active_bot_ids:
+            bot_meta = next((b for b in all_bots if b["id"] == bid), None)
+            bnet = (bot_meta.get("network") or "mainnet").lower() if bot_meta else "mainnet"
+            leverage = int(bot_meta["parameters"].get("leverage", 20)) if bot_meta and "parameters" in bot_meta else 20
+            for pos in pos_list:
+                if bnet == "mainnet":
+                    mainnet_open_count += 1
+                else:
+                    testnet_open_count += 1
+                pos_entry = float(pos.get("entry_price") or 0.0)
+                pos_qty = float(pos.get("qty") or 0.0)
+                if pos_entry > 0 and pos_qty > 0:
+                    position_value = pos_entry * pos_qty
+                    total_margin += (position_value / leverage)
+
+    available_balance = max(0.0, shared_balance - total_margin)
+    total_open_positions = mainnet_open_count + testnet_open_count
+    total_unrealized_pnl = mainnet_unrealized_pnl + testnet_unrealized_pnl
+
+    # 4. Closed Positions & Realized PnL breakdown
+    raw_closed = _get_closed_positions_unified()
+    total_closed = len(raw_closed)
+    mainnet_closed_count = 0
+    testnet_closed_count = 0
+    mainnet_realized_pnl = 0.0
+    testnet_realized_pnl = 0.0
+    profit_count = 0
+    profit_sum = 0.0
+    loss_count = 0
+    loss_sum = 0.0
+    total_realized_pnl = 0.0
+
+    for cp in raw_closed:
+        c_net = (cp.get("network") or "mainnet").lower()
+        rpnl = float(cp.get("realized_pnl") or 0.0)
+        total_realized_pnl += rpnl
+        if c_net == "mainnet":
+            mainnet_closed_count += 1
+            mainnet_realized_pnl += rpnl
+        else:
+            testnet_closed_count += 1
+            testnet_realized_pnl += rpnl
+
+        if rpnl > 0:
+            profit_count += 1
+            profit_sum += rpnl
+        elif rpnl < 0:
+            loss_count += 1
+            loss_sum += abs(rpnl)
+
+    return {
+        "balance": {
+            "total_balance": round(shared_balance, 2),
+            "available_balance": round(available_balance, 2),
+            "used_margin": round(total_margin, 2)
+        },
+        "bots": {
+            "total": total_bots,
+            "active": active_bots_count,
+            "mainnet_total": mainnet_total,
+            "mainnet_running": mainnet_running,
+            "testnet_total": testnet_total,
+            "testnet_running": testnet_running
+        },
+        "open_positions": {
+            "total": total_open_positions,
+            "mainnet": mainnet_open_count,
+            "testnet": testnet_open_count,
+            "total_unrealized_pnl": round(total_unrealized_pnl, 2),
+            "mainnet_unrealized_pnl": round(mainnet_unrealized_pnl, 2),
+            "testnet_unrealized_pnl": round(testnet_unrealized_pnl, 2)
+        },
+        "closed_positions": {
+            "total": total_closed,
+            "mainnet": mainnet_closed_count,
+            "testnet": testnet_closed_count,
+            "net_realized_pnl": round(total_realized_pnl, 2),
+            "mainnet_realized_pnl": round(mainnet_realized_pnl, 2),
+            "testnet_realized_pnl": round(testnet_realized_pnl, 2),
+            "profit_count": profit_count,
+            "profit_sum": round(profit_sum, 2),
+            "loss_count": loss_count,
+            "loss_sum": round(loss_sum, 2)
+        }
     }
 
 @app.post("/api/balance/add")
