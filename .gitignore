@@ -25,6 +25,7 @@ live_trading.log
 
 # Data Caches & Parquet
 data/cache_klines/
+data/live_klines/
 *.parquet
 
 # Virtual Environments

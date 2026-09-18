@@ -1,10 +1,11 @@
 import asyncio
+import os
 import json
 import logging
 import aiohttp
 import websockets
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Callable, Optional, Tuple
 
 logger = logging.getLogger("DataEngine")
@@ -20,6 +21,185 @@ if not binance_logger.handlers:
     binance_logger.addHandler(api_handler)
 
 
+class KlineCacheManager:
+    """
+    Manages local persistent 7-day CSV kline storage and gap-filling.
+    Directory: data/live_klines/{symbol}_{interval}.csv
+    """
+    CACHE_DIR = os.path.join("data", "live_klines")
+    INTERVAL_SECONDS = {
+        "1m": 60, "3m": 180, "5m": 300, "15m": 900, "30m": 1800,
+        "1h": 3600, "2h": 7200, "4h": 14400, "1d": 86400
+    }
+
+    @classmethod
+    def _ensure_dir(cls):
+        os.makedirs(cls.CACHE_DIR, exist_ok=True)
+
+    @classmethod
+    def get_csv_path(cls, symbol: str, interval: str) -> str:
+        cls._ensure_dir()
+        return os.path.join(cls.CACHE_DIR, f"{symbol.upper()}_{interval}.csv")
+
+    @classmethod
+    def get_interval_seconds(cls, interval: str) -> int:
+        return cls.INTERVAL_SECONDS.get(interval, 300)
+
+    @classmethod
+    async def sync_klines(cls, symbol: str, interval: str, days: int = 7) -> List[dict]:
+        """
+        Loads 7 days of klines from local CSV.
+        If file is missing, downloads 7 days from Binance.
+        If file exists with missing gap, downloads ONLY the missing gap candles.
+        Prunes candles older than 7 days and saves to CSV.
+        """
+        cls._ensure_dir()
+        csv_path = cls.get_csv_path(symbol, interval)
+        now = datetime.now(timezone.utc)
+        cutoff_dt = now - timedelta(days=days)
+        interval_sec = cls.get_interval_seconds(interval)
+
+        existing_df = pd.DataFrame()
+        if os.path.exists(csv_path):
+            try:
+                df_read = pd.read_csv(csv_path)
+                if not df_read.empty and "timestamp" in df_read.columns:
+                    df_read["timestamp"] = pd.to_datetime(df_read["timestamp"], utc=True)
+                    df_read = df_read[df_read["timestamp"] >= cutoff_dt].sort_values("timestamp").reset_index(drop=True)
+                    existing_df = df_read
+            except Exception as e:
+                logger.warning(f"[{symbol} {interval}] Error reading local CSV: {e}. Re-fetching.")
+                existing_df = pd.DataFrame()
+
+        # Check if we have data and whether there is a gap
+        if not existing_df.empty:
+            last_dt = existing_df["timestamp"].iloc[-1]
+            gap_seconds = (now - last_dt).total_seconds()
+            
+            # If the last candle is older than 1.2 intervals, fetch gap
+            if gap_seconds > (interval_sec * 1.2):
+                start_ms = int(last_dt.timestamp() * 1000) + 1
+                end_ms = int(now.timestamp() * 1000)
+                logger.info(f"[{symbol} {interval}] Local CSV cache found ({len(existing_df)} candles). Filling gap of ~{int(gap_seconds/60)}m...")
+                gap_klines = await cls._fetch_binance_range(symbol, interval, start_ms=start_ms, end_ms=end_ms)
+                if gap_klines:
+                    gap_df = pd.DataFrame(gap_klines)
+                    gap_df["timestamp"] = pd.to_datetime(gap_df["timestamp"], utc=True)
+                    combined_df = pd.concat([existing_df, gap_df], ignore_index=True)
+                    combined_df = combined_df.drop_duplicates(subset=["timestamp"], keep="last").sort_values("timestamp").reset_index(drop=True)
+                    existing_df = combined_df
+                    logger.info(f"[{symbol} {interval}] Filled gap with {len(gap_klines)} candles. Total cached: {len(existing_df)}.")
+
+            if len(existing_df) >= 50:
+                cls._save_df_to_csv(existing_df, csv_path)
+                return cls._df_to_klines_list(existing_df)
+
+        # Full 7-day fetch if missing or insufficient
+        start_ms = int(cutoff_dt.timestamp() * 1000)
+        end_ms = int(now.timestamp() * 1000)
+        logger.info(f"[{symbol} {interval}] Initializing local CSV with 7-day historical klines from Binance...")
+        full_klines = await cls._fetch_binance_range(symbol, interval, start_ms=start_ms, end_ms=end_ms)
+        if full_klines:
+            df = pd.DataFrame(full_klines)
+            df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+            df = df.drop_duplicates(subset=["timestamp"], keep="last").sort_values("timestamp").reset_index(drop=True)
+            cls._save_df_to_csv(df, csv_path)
+            logger.info(f"[{symbol} {interval}] Saved {len(df)} candles (7 days) to {csv_path}.")
+            return cls._df_to_klines_list(df)
+
+        return []
+
+    @classmethod
+    async def _fetch_binance_range(cls, symbol: str, interval: str, start_ms: int, end_ms: int) -> List[dict]:
+        url = "https://fapi.binance.com/fapi/v1/klines"
+        klines = []
+        current_start = start_ms
+        
+        async with aiohttp.ClientSession() as session:
+            while current_start < end_ms:
+                params = {
+                    "symbol": symbol.upper(),
+                    "interval": interval,
+                    "startTime": current_start,
+                    "limit": 1000
+                }
+                try:
+                    binance_logger.info(f"REST REQUEST (Klines): GET {url} | Params: {params}")
+                    async with session.get(url, params=params, timeout=8) as resp:
+                        if resp.status != 200:
+                            logger.warning(f"[{symbol} {interval}] Binance API status {resp.status} during range fetch.")
+                            break
+                        data = await resp.json()
+                        if not data:
+                            break
+                        for k in data:
+                            klines.append({
+                                "timestamp": datetime.fromtimestamp(k[0] / 1000, tz=timezone.utc),
+                                "open": float(k[1]),
+                                "high": float(k[2]),
+                                "low": float(k[3]),
+                                "close": float(k[4]),
+                                "volume": float(k[5])
+                            })
+                        last_kline_ms = data[-1][0]
+                        if len(data) < 1000 or last_kline_ms <= current_start:
+                            break
+                        current_start = last_kline_ms + 1
+                except Exception as e:
+                    logger.warning(f"[{symbol} {interval}] Error fetching klines range: {e}")
+                    break
+        return klines
+
+    @classmethod
+    def _save_df_to_csv(cls, df: pd.DataFrame, csv_path: str):
+        try:
+            df_to_save = df.copy()
+            if "timestamp" in df_to_save.columns and pd.api.types.is_datetime64_any_dtype(df_to_save["timestamp"]):
+                df_to_save["timestamp"] = df_to_save["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S")
+            df_to_save.to_csv(csv_path, index=False, columns=["timestamp", "open", "high", "low", "close", "volume"])
+        except Exception as e:
+            logger.error(f"Error saving klines to CSV {csv_path}: {e}")
+
+    @classmethod
+    def _df_to_klines_list(cls, df: pd.DataFrame) -> List[dict]:
+        klines = []
+        for _, row in df.iterrows():
+            ts = row["timestamp"]
+            if isinstance(ts, str):
+                ts = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+            elif hasattr(ts, "to_pydatetime"):
+                ts = ts.to_pydatetime()
+            klines.append({
+                "timestamp": ts,
+                "open": float(row["open"]),
+                "high": float(row["high"]),
+                "low": float(row["low"]),
+                "close": float(row["close"]),
+                "volume": float(row["volume"]),
+                "closed": True
+            })
+        return klines
+
+    @classmethod
+    def append_closed_candle(cls, symbol: str, interval: str, candle: dict):
+        """Appends a completed candle to local CSV."""
+        csv_path = cls.get_csv_path(symbol, interval)
+        try:
+            ts_val = candle["timestamp"]
+            ts_str = ts_val.strftime("%Y-%m-%d %H:%M:%S") if isinstance(ts_val, datetime) else str(ts_val)
+            line = f"{ts_str},{candle['open']:.8f},{candle['high']:.8f},{candle['low']:.8f},{candle['close']:.8f},{candle['volume']:.8f}\n"
+            
+            if not os.path.exists(csv_path):
+                with open(csv_path, "w", encoding="utf-8") as f:
+                    f.write("timestamp,open,high,low,close,volume\n")
+                    f.write(line)
+            else:
+                with open(csv_path, "a", encoding="utf-8") as f:
+                    f.write(line)
+        except Exception as e:
+            logger.error(f"[{symbol} {interval}] Error appending candle to CSV: {e}")
+
+
 class _SharedMarketStream:
     """
     Singleton connection manager per (symbol, interval).
@@ -33,7 +213,7 @@ class _SharedMarketStream:
         self.rest_url = "https://fapi.binance.com/fapi/v1/klines"
         
         self.klines: List[dict] = []
-        self.max_klines = 100
+        self.max_klines = 2200  # Holds 7 days of 5m candles (~2016) in memory
         self.running = False
         self._ws_task: Optional[asyncio.Task] = None
         self._fetch_task: Optional[asyncio.Task] = None
@@ -82,52 +262,17 @@ class _SharedMarketStream:
         logger.info(f"[{self.symbol} {self.interval}] SharedMarketStream stopped.")
 
     async def fetch_historical_data(self):
-        """Fetch historical candles once to initialize indicators for all subscriber bots."""
+        """Load 7 days of historical candles from local CSV and fill any missing gaps."""
         if len(self.klines) >= 50:
-            return  # Already populated
+            return  # Already populated in memory
 
-        params = {
-            "symbol": self.symbol,
-            "interval": self.interval,
-            "limit": self.max_klines
-        }
-        msg = f"[{self.symbol} {self.interval}] Fetching shared historical candles..."
-        logger.info(msg)
-
-        import random
-        attempts = 0
-        while self.running and attempts < 10:
-            attempts += 1
-            async with aiohttp.ClientSession() as session:
-                try:
-                    binance_logger.info(f"REST REQUEST (Historical): GET {self.rest_url} | Params: {params}")
-                    async with session.get(self.rest_url, params=params, timeout=6) as resp:
-                        binance_logger.info(f"REST RESPONSE (Historical): HTTP {resp.status}")
-                        if resp.status == 200:
-                            data = await resp.json()
-                            self._parse_klines(data)
-                            return
-                        else:
-                            logger.warning(f"[{self.symbol}] Futures API returned status {resp.status}. Retrying...")
-                except Exception as e:
-                    logger.warning(f"[{self.symbol}] Futures API failed ({e}). Retrying...")
-                    binance_logger.error(f"REST ERROR (Historical) Failed: {e}")
-
-            await asyncio.sleep(random.uniform(2.0, 5.0))
-
-    def _parse_klines(self, data):
-        self.klines = []
-        for k in data:
-            self.klines.append({
-                "timestamp": datetime.fromtimestamp(k[0] / 1000),
-                "open": float(k[1]),
-                "high": float(k[2]),
-                "low": float(k[3]),
-                "close": float(k[4]),
-                "volume": float(k[5]),
-                "closed": True
-            })
-        logger.info(f"[{self.symbol} {self.interval}] Successfully loaded {len(self.klines)} shared historical candles.")
+        logger.info(f"[{self.symbol} {self.interval}] Syncing 7-day historical klines cache...")
+        loaded = await KlineCacheManager.sync_klines(self.symbol, self.interval, days=7)
+        if loaded:
+            self.klines = loaded[-self.max_klines:]
+            logger.info(f"[{self.symbol} {self.interval}] Successfully loaded {len(self.klines)} candles from 7-day CSV cache.")
+        else:
+            logger.warning(f"[{self.symbol} {self.interval}] Could not load historical candles from cache.")
 
     def get_dataframe(self) -> pd.DataFrame:
         if not self.klines:
@@ -183,6 +328,10 @@ class _SharedMarketStream:
 
                         curr_close = candle["close"]
 
+                        # Append closed candle to local persistent CSV storage
+                        if is_closed:
+                            KlineCacheManager.append_closed_candle(self.symbol, self.interval, candle)
+
                         # Dispatch tick to all subscribers
                         for engine, (candle_cbs, tick_cbs) in list(self._subscribers.items()):
                             for t_cb in tick_cbs:
@@ -197,7 +346,7 @@ class _SharedMarketStream:
                         # If candle is closed, snapshot dataframe and dispatch to all subscribers
                         if is_closed:
                             df_snapshot = self.get_dataframe()
-                            logger.info(f"[{self.symbol} {self.interval}] Candle closed at {curr_close}. Broadcasting to {len(self._subscribers)} subscribers.")
+                            logger.info(f"[{self.symbol} {self.interval}] Candle closed at {curr_close}. Broadcasting {len(df_snapshot)} candles to {len(self._subscribers)} subscribers.")
                             for engine, (candle_cbs, tick_cbs) in list(self._subscribers.items()):
                                 for c_cb in candle_cbs:
                                     try:
@@ -345,30 +494,12 @@ class DataEngine:
 
     @staticmethod
     async def fetch_external_klines(symbol, interval, limit=100):
-        """Fetch historical candles for any timeframe from Binance REST API."""
-        url = "https://fapi.binance.com/fapi/v1/klines"
-        params = {
-            "symbol": symbol.upper(),
-            "interval": interval,
-            "limit": limit
-        }
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.get(url, params=params, timeout=8) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        klines = []
-                        for k in data:
-                            klines.append({
-                                "timestamp": datetime.fromtimestamp(k[0] / 1000),
-                                "open": float(k[1]),
-                                "high": float(k[2]),
-                                "low": float(k[3]),
-                                "close": float(k[4]),
-                                "volume": float(k[5]),
-                                "closed": True
-                            })
-                        return pd.DataFrame(klines)
-            except Exception as e:
-                logger.error(f"Error fetching external klines for {symbol} on {interval}: {e}")
+        """Fetch historical candles for any timeframe from local 7-day CSV cache / Binance."""
+        try:
+            klines = await KlineCacheManager.sync_klines(symbol, interval, days=7)
+            if klines:
+                df = pd.DataFrame(klines)
+                return df.iloc[-limit:] if len(df) > limit else df
+        except Exception as e:
+            logger.error(f"Error fetching cached klines for {symbol} on {interval}: {e}")
         return pd.DataFrame()
