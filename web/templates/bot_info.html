@@ -329,9 +329,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const botId = parseInt(urlParams.get('bot_id'));
 
-        const IS_ADMIN = false;
-        const IS_TESTNET = false;
-        const apiBase = (typeof IS_TESTNET !== 'undefined' && IS_TESTNET) ? '/api' : (IS_ADMIN ? '/api/admin' : '/api');
+        const apiBase = '/api';
 
         let botTradesList = [];
 

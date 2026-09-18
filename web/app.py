@@ -154,7 +154,6 @@ class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
 
-@app.post("/api/admin/change-password")
 @app.post("/api/change-password")
 async def change_admin_password(req: ChangePasswordRequest, request: Request):
     await check_admin_auth(request, db=db_live)
@@ -178,7 +177,7 @@ async def api_logout(request: Request):
     response.delete_cookie(key="session_id")
     return response
 
-# ── UNIFIED APPLICATION PAGE ROUTES ──────────────────────────────────────────
+# ── APPLICATION PAGE ROUTES ──────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
 async def get_index(request: Request):
@@ -252,62 +251,6 @@ async def get_backtest_detail_page(request: Request, id: Optional[int] = None):
     except HTTPException:
         return RedirectResponse(url="/login")
     return serve_page("backtest_detail.html", is_admin=True)
-
-# ── LEGACY ROUTE REDIRECTS (Auto-redirect /mainnet, /testnet, /admin to unified) ──
-
-@app.get("/mainnet")
-@app.get("/testnet")
-@app.get("/admin")
-async def redirect_to_root():
-    return RedirectResponse(url="/", status_code=307)
-
-@app.get("/mainnet/bots")
-@app.get("/testnet/bots")
-@app.get("/admin/bots")
-async def redirect_to_bots():
-    return RedirectResponse(url="/bots", status_code=307)
-
-@app.get("/mainnet/positions")
-@app.get("/testnet/positions")
-@app.get("/admin/positions")
-async def redirect_to_positions():
-    return RedirectResponse(url="/positions", status_code=307)
-
-@app.get("/mainnet/closed-positions")
-@app.get("/testnet/closed-positions")
-@app.get("/admin/closed-positions")
-async def redirect_to_closed_positions():
-    return RedirectResponse(url="/closed-positions", status_code=307)
-
-@app.get("/mainnet/binance-logs")
-@app.get("/testnet/binance-logs")
-@app.get("/admin/binance-logs")
-async def redirect_to_binance_logs():
-    return RedirectResponse(url="/binance-logs", status_code=307)
-
-@app.get("/mainnet/scanner")
-@app.get("/testnet/scanner")
-@app.get("/admin/scanner")
-async def redirect_to_scanner():
-    return RedirectResponse(url="/scanner", status_code=307)
-
-@app.get("/mainnet/bot-info")
-@app.get("/testnet/bot-info")
-@app.get("/admin/bot-info")
-async def redirect_to_bot_info(request: Request):
-    qs = request.url.query
-    dest = f"/bot-info?{qs}" if qs else "/bot-info"
-    return RedirectResponse(url=dest, status_code=307)
-
-@app.get("/mainnet/transactions")
-@app.get("/admin/transactions")
-async def redirect_transactions():
-    return RedirectResponse(url="/closed-positions", status_code=307)
-
-@app.get("/mainnet/liquidations")
-@app.get("/admin/liquidations")
-async def redirect_liquidations():
-    return RedirectResponse(url="/positions", status_code=307)
 
 def _enrich_bots_list(target_bots, target_mgr, target_db, default_network="mainnet"):
     enriched_bots = []
@@ -530,7 +473,6 @@ async def get_strategies():
     return list(STRATEGY_MAP.keys())
 
 @app.get("/api/balance")
-@app.get("/api/admin/balance")
 async def get_wallet_balance():
     shared_balance = float(db.get_state("virtual_balance", 500.0))
     all_bots = db.get_bots()
@@ -855,7 +797,6 @@ def _get_closed_positions_unified(bot_id=None, network_filter=None):
     return all_positions
 
 @app.get("/api/closed-positions")
-@app.get("/api/admin/closed-positions")
 async def get_closed_positions(request: Request = None, bot_id: Optional[int] = None, network: Optional[str] = None):
     return _get_closed_positions_unified(bot_id=bot_id, network_filter=network)
 
@@ -926,10 +867,6 @@ async def fetch_scanner_cell(symbol: str, timeframe: str):
             "rsi": 50.0
         }
 
-@app.get("/scanner", response_class=HTMLResponse)
-async def get_scanner_page():
-    return serve_page("scanner.html", is_admin=False)
-
 @app.get("/api/scanner")
 async def get_scanner_data():
     symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "LINKUSDT"]
@@ -944,27 +881,9 @@ async def get_scanner_data():
     results = await asyncio.gather(*tasks)
     return results
 
-# --- ADMIN PROTECTED API ENDPOINTS ---
-
-@app.get("/api/admin/bots")
-async def get_admin_bots_api(request: Request, network: Optional[str] = None):
-    await check_admin_auth(request)
-    return await get_bots(network=network)
-
-@app.post("/api/admin/bots")
-async def create_admin_bot(req: BotCreateRequest, request: Request):
-    await check_admin_auth(request)
-    return await create_bot(req)
-
-@app.delete("/api/admin/bots/{bot_id}")
-async def delete_admin_bot(bot_id: int, request: Request):
-    await check_admin_auth(request, db=db)
-    return await delete_bot(bot_id)
-
 class BotUpdateRequest(BaseModel):
     trade_amount_usd: Optional[float] = None
     leverage: Optional[int] = None
-
 
 def _sync_live_bot_state(active_bot, params: dict) -> None:
     """Keep the running bot instance and its risk/execution state aligned with updated parameters."""
@@ -987,9 +906,8 @@ def _sync_live_bot_state(active_bot, params: dict) -> None:
     if hasattr(active_bot, "execution") and active_bot.execution:
         active_bot.execution.parameters = params
 
-
-@app.patch("/api/admin/bots/{bot_id}")
-async def update_admin_bot(bot_id: int, req: BotUpdateRequest, request: Request):
+@app.patch("/api/bots/{bot_id}")
+async def update_bot_params(bot_id: int, req: BotUpdateRequest, request: Request):
     """Update bot trade_amount and/or leverage without stopping/restarting the bot.
     Changes take effect on the NEXT trade signal."""
     await check_admin_auth(request, db=db_live)
@@ -1032,23 +950,7 @@ async def update_admin_bot(bot_id: int, req: BotUpdateRequest, request: Request)
     db.log_message("INFO", msg)
     return {"status": "success", "message": msg, "parameters": params}
 
-@app.post("/api/admin/bots/{bot_id}/toggle")
-async def toggle_admin_bot(bot_id: int, request: Request):
-    await check_admin_auth(request)
-    return await toggle_bot(bot_id)
-
-@app.post("/api/admin/bots/start-all")
-async def start_all_live_bots(request: Request, network: Optional[str] = "mainnet"):
-    await check_admin_auth(request)
-    return await start_all_bots(network=network)
-
-@app.post("/api/admin/bots/stop-all")
-async def stop_all_live_bots(request: Request, network: Optional[str] = "mainnet"):
-    await check_admin_auth(request)
-    return await stop_all_bots(network=network)
-
 @app.post("/api/bots/{bot_id}/retry-tp")
-@app.post("/api/admin/bots/{bot_id}/retry-tp")
 async def retry_tp_orders(bot_id: int, request: Request = None):
     if request:
         try:
@@ -1066,7 +968,6 @@ async def retry_tp_orders(bot_id: int, request: Request = None):
     return {"status": "success" if success else "failed"}
 
 @app.post("/api/bots/{bot_id}/close-position")
-@app.post("/api/admin/bots/{bot_id}/close-position")
 async def api_close_position(bot_id: int, request: Request = None):
     if request:
         try:
@@ -1135,13 +1036,7 @@ async def api_close_position(bot_id: int, request: Request = None):
         
     return {"status": "success"}
 
-@app.post("/api/admin/balance/add")
-async def add_admin_balance(req: AddBalanceRequest, request: Request):
-    await check_admin_auth(request)
-    return await add_balance(req)
-
 @app.get("/api/orders")
-@app.get("/api/admin/orders")
 async def get_orders_api(
     request: Request,
     network: Optional[str] = None,
@@ -1156,7 +1051,6 @@ async def get_orders_api(
     return db.get_orders(limit=limit, offset=offset, bot_id=bot_id, symbol=symbol, status=status, side=side, network=net)
 
 @app.get("/api/binance-logs")
-@app.get("/api/admin/binance-logs")
 async def get_binance_logs_api(
     request: Request,
     network: Optional[str] = None,
@@ -1170,7 +1064,6 @@ async def get_binance_logs_api(
     return db.get_binance_api_logs(limit=limit, offset=offset, symbol=symbol, action=action, status=status, network=net)
 
 @app.get("/api/binance-logs/raw")
-@app.get("/api/admin/binance-logs/raw")
 async def get_binance_logs_raw(request: Request, lines: int = 150):
     log_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "binance_orders.log")
     if not os.path.exists(log_file):
@@ -1182,24 +1075,16 @@ async def get_binance_logs_raw(request: Request, lines: int = 150):
     except Exception as e:
         return {"lines": [f"Error reading log file: {str(e)}"]}
 
-@app.get("/api/admin/pnl")
-async def get_admin_pnl(request: Request, period: str = "30d", network: Optional[str] = None):
-    await check_admin_auth(request)
+@app.get("/api/pnl")
+async def get_pnl_api(request: Request, period: str = "30d", network: Optional[str] = None):
     return await get_pnl(period=period, network=network)
 
-@app.get("/api/admin/logs")
-async def get_admin_logs(request: Request, bot_id: Optional[int] = None, network: Optional[str] = None):
-    await check_admin_auth(request)
+@app.get("/api/logs")
+async def get_logs_api(request: Request, bot_id: Optional[int] = None, network: Optional[str] = None):
     return await get_logs(bot_id=bot_id, network=network)
-
-@app.get("/api/admin/scanner")
-async def get_admin_scanner_data(request: Request):
-    await check_admin_auth(request)
-    return await get_scanner_data()
 
 # --- BACKTEST RESULTS API ---
 @app.get("/api/backtest-results")
-@app.get("/api/admin/backtest-results")
 async def get_backtest_results_api(
     strategy: Optional[str] = None,
     symbol: Optional[str] = None,
@@ -1222,12 +1107,10 @@ async def get_backtest_results_api(
     )
 
 @app.get("/api/backtest-stats")
-@app.get("/api/admin/backtest-stats")
 async def get_backtest_stats_api():
     return db.get_backtest_summary_stats()
 
 @app.get("/api/backtest-result/{result_id}")
-@app.get("/api/admin/backtest-result/{result_id}")
 async def get_backtest_result_api(result_id: int):
     res = db.get_backtest_result_by_id(result_id)
     if not res:
@@ -1235,7 +1118,6 @@ async def get_backtest_result_api(result_id: int):
     return res
 
 @app.get("/api/backtest-chart-data/{result_id}")
-@app.get("/api/admin/backtest-chart-data/{result_id}")
 async def get_backtest_chart_data_api(result_id: int):
     res = db.get_backtest_result_by_id(result_id)
     if not res:
@@ -1332,7 +1214,7 @@ async def get_backtest_chart_data_api(result_id: int):
         "markers": markers
     }
 
-@app.post("/api/admin/clear-database")
+@app.post("/api/clear-database")
 async def clear_database_api(request: Request = None):
     db.clear_database_except_symbols()
     return {"status": "success", "message": "All operational tables cleared except symbols configuration."}
@@ -1340,7 +1222,6 @@ async def clear_database_api(request: Request = None):
 # --- SYMBOLS CONFIGURATION API ---
 
 @app.get("/api/symbols")
-@app.get("/api/admin/symbols")
 async def get_symbols(request: Request = None):
     return db.get_symbols_config()
 
@@ -1349,13 +1230,11 @@ class SymbolConfigUpdateRequest(BaseModel):
     max_leverage: int
 
 @app.post("/api/symbols")
-@app.post("/api/admin/symbols")
 async def update_symbol(req: SymbolConfigUpdateRequest, request: Request = None):
     db.update_symbol_leverage(req.symbol, req.max_leverage)
     return {"status": "success"}
 
 @app.delete("/api/symbols/{symbol}")
-@app.delete("/api/admin/symbols/{symbol}")
 async def delete_symbol(symbol: str, request: Request = None):
     db.delete_symbol_config(symbol)
     return {"status": "success"}

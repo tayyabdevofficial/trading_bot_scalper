@@ -276,9 +276,7 @@
     </div>
 
     <script>
-        const IS_ADMIN = false;
-        const IS_TESTNET = false;
-        const apiBase = (typeof IS_TESTNET !== 'undefined' && IS_TESTNET) ? '/api' : (IS_ADMIN ? '/api/admin' : '/api');
+        const apiBase = '/api';
 
         lucide.createIcons();
 
