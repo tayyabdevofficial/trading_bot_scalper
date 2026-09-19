@@ -430,15 +430,19 @@ class ExecutionHandler:
                 else:
                     new_sl = avg_entry_price * (1 + sl_pct) if sl_pct > 0 else 0.0
                     
+                new_tp = avg_entry_price * (1 + bot_tp_pct/100) if side.upper() == "BUY" else avg_entry_price * (1 - bot_tp_pct/100)
                 existing_pos["original_qty"] = round(total_qty, qty_precision)
                 existing_pos["qty"] = round(total_qty, qty_precision)
                 existing_pos["entry_price"] = round(avg_entry_price, price_precision)
+                existing_pos["tp_price"] = round(new_tp, price_precision)
                 existing_pos["sl_price"] = round(new_sl, price_precision) if new_sl > 0 else 0.0
                 existing_pos["tp_targets"] = self.calculate_tp_targets(side, avg_entry_price, total_qty, bot_tp_pct, price_precision, qty_precision)
                 existing_pos["timestamp"] = datetime.utcnow().isoformat()
                 existing_pos.setdefault("order_ids", []).append(sim_order_id)
                 existing_pos["order_id"] = sim_order_id
             else:
+                initial_tp = price * (1 + bot_tp_pct/100) if side.upper() == "BUY" else price * (1 - bot_tp_pct/100)
+                new_pos["tp_price"] = round(initial_tp, price_precision)
                 new_pos["tp_targets"] = self.calculate_tp_targets(side, float(price), float(qty), bot_tp_pct, price_precision, qty_precision)
                 self.active_position.append(new_pos)
 
@@ -534,9 +538,11 @@ class ExecutionHandler:
                     new_sl = avg_entry_price * (1 + sl_pct) if sl_pct > 0 else 0.0
                     
                 new_sl = round(new_sl, price_precision)
+                new_tp = avg_entry_price * (1 + bot_tp_pct/100) if side.upper() == "BUY" else avg_entry_price * (1 - bot_tp_pct/100)
                 existing_pos["original_qty"] = round(total_qty, qty_precision)
                 existing_pos["qty"] = round(total_qty, qty_precision)
                 existing_pos["entry_price"] = round(avg_entry_price, price_precision)
+                existing_pos["tp_price"] = round(new_tp, price_precision)
                 existing_pos["sl_price"] = round(new_sl, price_precision) if new_sl > 0 else 0.0
                 existing_pos["timestamp"] = datetime.utcnow().isoformat()
                 existing_pos.setdefault("order_ids", []).append(order_id)
@@ -552,7 +558,9 @@ class ExecutionHandler:
                     except Exception:
                         pass
             else:
+                initial_tp = entry_price * (1 + bot_tp_pct/100) if side.upper() == "BUY" else entry_price * (1 - bot_tp_pct/100)
                 new_pos["entry_price"] = entry_price
+                new_pos["tp_price"] = round(initial_tp, price_precision)
                 new_pos["order_id"] = order_id
                 new_pos["order_ids"] = [order_id]
                 new_pos["tp_targets"] = self.calculate_tp_targets(side, entry_price, float(qty), bot_tp_pct, price_precision, qty_precision)
