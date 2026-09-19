@@ -43,22 +43,19 @@ class RiskManager:
     def get_sl_tp_prices(self, side: str, entry_price: float) -> tuple:
         """
         Calculates Stop Loss and Take Profit prices based on configured percentages.
-        
-        Parameters:
-            side (str): "BUY" (Long) or "SELL" (Short)
-            entry_price (float): The price of entry
-            
-        Returns:
-            tuple: (stop_loss_price, take_profit_price)
+        If stop_loss_pct is 0.0, Stop Loss is disabled (0.0).
         """
-        sl_distance = entry_price * (self.stop_loss_pct / 100.0)
         tp_distance = entry_price * (self.take_profit_pct / 100.0)
         
+        if self.stop_loss_pct > 0:
+            sl_distance = entry_price * (self.stop_loss_pct / 100.0)
+            sl_price = (entry_price - sl_distance) if side.upper() == "BUY" else (entry_price + sl_distance)
+        else:
+            sl_price = 0.0
+            
         if side.upper() == "BUY":
-            sl_price = entry_price - sl_distance
             tp_price = entry_price + tp_distance
         elif side.upper() == "SELL":
-            sl_price = entry_price + sl_distance
             tp_price = entry_price - tp_distance
         else:
             raise ValueError(f"Invalid trading side: {side}")

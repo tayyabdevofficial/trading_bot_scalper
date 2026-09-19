@@ -628,14 +628,29 @@ class ExecutionHandler:
         for pos in list(self.active_position):
             side = pos["side"]
             entry_price = pos["entry_price"]
-            sl = pos["sl_price"]
+            sl = float(pos.get("sl_price") or 0.0)
+            tp = float(pos.get("tp_price") or 0.0)
             
-            # Check Stop Loss
+            # 1. Check Take Profit first (Matches BacktestEngine)
+            trigger_tp = False
+            if side == "BUY" and tp > 0 and current_price >= tp:
+                trigger_tp = True
+            elif side == "SELL" and tp > 0 and current_price <= tp:
+                trigger_tp = True
+
+            if trigger_tp:
+                exit_price = tp
+                pnl = (exit_price - entry_price) * pos["qty"] if side == "BUY" else (entry_price - exit_price) * pos["qty"]
+                await self.close_position(exit_price, "TAKE_PROFIT", pnl, side, pos_to_close=pos)
+                continue
+            
+            # 2. Check Stop Loss ONLY if explicitly enabled (sl > 0)
             trigger_sl = False
-            if side == "BUY" and sl > 0 and current_price <= sl:
-                trigger_sl = True
-            elif side == "SELL" and sl > 0 and current_price >= sl:
-                trigger_sl = True
+            if sl > 0:
+                if side == "BUY" and current_price <= sl:
+                    trigger_sl = True
+                elif side == "SELL" and current_price >= sl:
+                    trigger_sl = True
                 
             if trigger_sl:
                 pnl = (current_price - entry_price) * pos["qty"] if side == "BUY" else (entry_price - current_price) * pos["qty"]

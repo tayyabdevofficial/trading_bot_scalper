@@ -1089,12 +1089,19 @@ def _get_closed_positions_unified(bot_id=None, network_filter=None):
     import json
     all_positions = []
     seen_order_ids = set()
+    seen_cycles = set()
     
     net = None if network_filter in (None, "all") else network_filter.lower()
     orders = db.get_orders(bot_id=bot_id, network=net, limit=500)
     for ord_row in orders:
         if ord_row["status"] in ("TP_HIT", "SL_HIT", "CLOSED", "OPPOSITE_SIGNAL_CLOSED", "CANCELLED"):
-            seen_order_ids.add(ord_row["order_id"])
+            oid = str(ord_row["order_id"] or "")
+            seen_order_ids.add(oid)
+            seen_order_ids.add(f"POS_{oid}")
+            seen_order_ids.add(f"POS_{oid}_ENTRY")
+            
+            cycle_key = f"{ord_row.get('bot_id')}_{ord_row.get('symbol')}_{ord_row.get('created_at')}"
+            seen_cycles.add(cycle_key)
             
             tp_targets = []
             if ord_row.get("tp_targets"):
@@ -1103,10 +1110,11 @@ def _get_closed_positions_unified(bot_id=None, network_filter=None):
                 except:
                     pass
                     
+            ord_net = (ord_row.get("network") or ("testnet" if "SIM" in oid.upper() else "mainnet")).lower()
             all_positions.append({
-                "order_id": ord_row["order_id"],
+                "order_id": oid,
                 "bot_id": ord_row["bot_id"],
-                "network": ord_row["network"],
+                "network": ord_net,
                 "symbol": ord_row["symbol"],
                 "strategy_name": "",
                 "open_timestamp": format_utc_timestamp(ord_row["created_at"]),
@@ -1123,14 +1131,14 @@ def _get_closed_positions_unified(bot_id=None, network_filter=None):
                 "tps_hit": 1 if ord_row["status"] == "TP_HIT" else 0,
                 "tps_total": 1,
                 "tp_targets": tp_targets,
-                "leverage": 5
+                "leverage": 20
             })
             
-    # 2. Fetch from trades table for legacy trades
+    # 2. Fetch from trades table for legacy trades not already captured in orders
     with db.get_connection() as conn:
         cursor = conn.cursor()
         query = """
-            SELECT t.*, b.strategy_name, b.parameters as bot_params, COALESCE(b.network, t.network, 'mainnet') as bot_net
+            SELECT t.*, b.strategy_name, b.parameters as bot_params, COALESCE(b.network, t.network) as bot_net
             FROM trades t
             LEFT JOIN bot_instances b ON t.bot_id = b.id
         """
@@ -1139,21 +1147,31 @@ def _get_closed_positions_unified(bot_id=None, network_filter=None):
         if bot_id is not None:
             clauses.append("t.bot_id = ?")
             params.append(bot_id)
-        if net:
-            clauses.append("(t.network = ? OR b.network = ?)")
-            params.extend([net, net])
         if clauses:
             query += " WHERE " + " AND ".join(clauses)
         query += " ORDER BY t.timestamp ASC"
         cursor.execute(query, params)
         trades = [dict(row) for row in cursor.fetchall()]
         for t in trades:
-            if "bot_net" in t and not t.get("network"):
-                t["network"] = t["bot_net"]
+            t_oid = str(t.get("order_id") or "")
+            t_net = t.get("bot_net") or t.get("network")
+            if not t_net:
+                t_net = "testnet" if ("SIM" in t_oid.upper() or "TESTNET" in t_oid.upper()) else "mainnet"
+            t["network"] = str(t_net).lower()
+
         legacy_cycles = group_trades_into_positions(trades)
         for cyc in legacy_cycles:
-            if cyc.get("order_id") not in seen_order_ids:
-                all_positions.append(cyc)
+            cyc_oid = str(cyc.get("order_id") or "")
+            cyc_key = f"{cyc.get('bot_id')}_{cyc.get('symbol')}_{cyc.get('open_timestamp')}"
+            
+            # Skip if already captured in orders table
+            if cyc_oid in seen_order_ids or cyc_key in seen_cycles:
+                continue
+            # Check if any constituent order id matches
+            if any(oid in seen_order_ids for oid in (cyc_oid, cyc_oid.replace("POS_", "").split("_EXIT")[0])):
+                continue
+                
+            all_positions.append(cyc)
                 
     if net:
         all_positions = [p for p in all_positions if (p.get("network") or "").lower() == net]

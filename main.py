@@ -111,23 +111,10 @@ class TradingBot:
                         pnl = (sync_price - pos["entry_price"]) * pos["qty"] if pos["side"] == "BUY" else (pos["entry_price"] - sync_price) * pos["qty"]
                         await self.execution.close_position(sync_price, "EXCHANGE_SYNC", pnl, pos["side"], pos_to_close=pos)
 
-            # Signal evaluation in Standard One-Way Mode:
-            can_enter = False
-            if signal != "HOLD":
-                has_buy = any(p["side"].upper() == "BUY" for p in self.execution.active_position)
-                has_sell = any(p["side"].upper() == "SELL" for p in self.execution.active_position)
-                
-                # OPPOSITE SIGNAL HANDLING:
-                # If we currently have SELL positions and got a BUY signal -> close ALL SELL positions!
-                if signal == "BUY" and has_sell:
-                    logger.info(f"[{self.symbol}] Signal flipped to BUY with open SHORT positions. Closing all SHORT positions on Binance & DB.")
-                    await self.execution.close_all_positions(current_price=current_price, reason="OPPOSITE_SIGNAL", side_to_close="SELL")
-                # If we currently have BUY positions and got a SELL signal -> close ALL BUY positions!
-                elif signal == "SELL" and has_buy:
-                    logger.info(f"[{self.symbol}] Signal flipped to SELL with open LONG positions. Closing all LONG positions on Binance & DB.")
-                    await self.execution.close_all_positions(current_price=current_price, reason="OPPOSITE_SIGNAL", side_to_close="BUY")
-
-                can_enter = True
+            # Signal evaluation:
+            # Long and Short positions run independently (matching BacktestEngine).
+            # Repeated signals in the same direction execute DCA position averaging.
+            can_enter = (signal in ("BUY", "SELL"))
 
             if can_enter and signal != "HOLD":
                 # 2. Chop Market regime filter check
