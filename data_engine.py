@@ -65,7 +65,8 @@ class KlineCacheManager:
                 df_read = pd.read_csv(csv_path)
                 if not df_read.empty and "timestamp" in df_read.columns:
                     df_read["timestamp"] = pd.to_datetime(df_read["timestamp"], utc=True)
-                    df_read = df_read[df_read["timestamp"] >= cutoff_dt].sort_values("timestamp").reset_index(drop=True)
+                    # Filter out any old data or future-shifted timestamps (e.g. from local timezone bugs)
+                    df_read = df_read[(df_read["timestamp"] >= cutoff_dt) & (df_read["timestamp"] <= now + timedelta(minutes=interval_sec/60))].sort_values("timestamp").reset_index(drop=True)
                     existing_df = df_read
             except Exception as e:
                 logger.warning(f"[{symbol} {interval}] Error reading local CSV: {e}. Re-fetching.")
@@ -166,9 +167,11 @@ class KlineCacheManager:
         for _, row in df.iterrows():
             ts = row["timestamp"]
             if isinstance(ts, str):
-                ts = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+                ts = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
             elif hasattr(ts, "to_pydatetime"):
                 ts = ts.to_pydatetime()
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
             klines.append({
                 "timestamp": ts,
                 "open": float(row["open"]),
@@ -182,11 +185,16 @@ class KlineCacheManager:
 
     @classmethod
     def append_closed_candle(cls, symbol: str, interval: str, candle: dict):
-        """Appends a completed candle to local CSV."""
+        """Appends a completed candle to local CSV in standardized UTC."""
         csv_path = cls.get_csv_path(symbol, interval)
         try:
             ts_val = candle["timestamp"]
-            ts_str = ts_val.strftime("%Y-%m-%d %H:%M:%S") if isinstance(ts_val, datetime) else str(ts_val)
+            if isinstance(ts_val, datetime):
+                if ts_val.tzinfo is not None:
+                    ts_val = ts_val.astimezone(timezone.utc)
+                ts_str = ts_val.strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                ts_str = str(ts_val)
             line = f"{ts_str},{candle['open']:.8f},{candle['high']:.8f},{candle['low']:.8f},{candle['close']:.8f},{candle['volume']:.8f}\n"
             
             if not os.path.exists(csv_path):
@@ -305,7 +313,7 @@ class _SharedMarketStream:
                         is_closed = kline_data.get("x", False)
 
                         candle = {
-                            "timestamp": datetime.fromtimestamp(kline_data.get("t") / 1000),
+                            "timestamp": datetime.fromtimestamp(kline_data.get("t") / 1000, tz=timezone.utc),
                             "open": float(kline_data.get("o")),
                             "high": float(kline_data.get("h")),
                             "low": float(kline_data.get("l")),
