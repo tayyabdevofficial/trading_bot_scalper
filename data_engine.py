@@ -287,20 +287,61 @@ class _SharedMarketStream:
             return pd.DataFrame()
         return pd.DataFrame(self.klines)
 
+    async def _fill_runtime_gap(self):
+        """Fetch any missing candles from Binance REST API if connection was temporarily interrupted."""
+        if not self.klines:
+            return
+        try:
+            last_dt = self.klines[-1]["timestamp"]
+            now = datetime.now(timezone.utc)
+            gap_seconds = (now - last_dt).total_seconds()
+            interval_sec = KlineCacheManager.get_interval_seconds(self.interval)
+            if gap_seconds > (interval_sec * 1.5):
+                start_ms = int(last_dt.timestamp() * 1000) + 1
+                end_ms = int(now.timestamp() * 1000)
+                logger.info(f"[{self.symbol} {self.interval}] Gap of ~{int(gap_seconds/60)}m detected. Fetching missing candles from REST API...")
+                gap_klines = await KlineCacheManager._fetch_binance_range(self.symbol, self.interval, start_ms=start_ms, end_ms=end_ms)
+                if gap_klines:
+                    for k in gap_klines:
+                        if not self.klines or k["timestamp"] > self.klines[-1]["timestamp"]:
+                            self.klines.append(k)
+                            KlineCacheManager.append_closed_candle(self.symbol, self.interval, k)
+                        elif k["timestamp"] == self.klines[-1]["timestamp"]:
+                            self.klines[-1] = k
+                    if len(self.klines) > self.max_klines:
+                        self.klines = self.klines[-self.max_klines:]
+                    logger.info(f"[{self.symbol} {self.interval}] Gap filled with {len(gap_klines)} candles.")
+        except Exception as e:
+            logger.warning(f"[{self.symbol} {self.interval}] Error in _fill_runtime_gap: {e}")
+
     async def _connect_websocket(self):
         import random
         while self.running:
             try:
                 logger.info(f"[{self.symbol} {self.interval}] Connecting to Shared WebSocket: {self.ws_url}")
-                ws = await asyncio.wait_for(websockets.connect(self.ws_url, open_timeout=6), timeout=10)
+                ws = await asyncio.wait_for(
+                    websockets.connect(
+                        self.ws_url,
+                        open_timeout=10,
+                        ping_interval=20,
+                        ping_timeout=20,
+                        close_timeout=5
+                    ),
+                    timeout=15
+                )
                 async with ws:
                     self.received_first_tick = False
+                    # On connect, ensure no candles were missed during reconnect window
+                    await self._fill_runtime_gap()
+                    
                     while self.running:
                         try:
-                            message = await asyncio.wait_for(ws.recv(), timeout=12)
+                            # 60-second timeout allows quieter altcoin markets without premature disconnects
+                            message = await asyncio.wait_for(ws.recv(), timeout=60)
                         except asyncio.TimeoutError:
-                            logger.warning(f"[{self.symbol} {self.interval}] No data received for 12s. Reconnecting...")
-                            break
+                            logger.info(f"[{self.symbol} {self.interval}] WebSocket idle (no trades for 60s). Checking connection health...")
+                            await self._fill_runtime_gap()
+                            continue
                         
                         data = json.loads(message)
                         if not self.received_first_tick:
@@ -370,10 +411,10 @@ class _SharedMarketStream:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.warning(f"[{self.symbol} {self.interval}] Shared WebSocket error: {e}")
+                logger.warning(f"[{self.symbol} {self.interval}] Shared WebSocket notice: {e}")
 
             if self.running:
-                delay = random.uniform(3.0, 7.0)
+                delay = random.uniform(2.0, 5.0)
                 await asyncio.sleep(delay)
 
 
