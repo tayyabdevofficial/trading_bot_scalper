@@ -590,17 +590,8 @@ class ExecutionHandler:
                 new_sl = round(new_sl, price_precision)
                 new_tp = avg_entry_price * (1 + bot_tp_pct/100) if side.upper() == "BUY" else avg_entry_price * (1 - bot_tp_pct/100)
                 
-                # 1. Cancel previous TP orders on Binance before updating to new targets
-                old_order_ids = [t.get("order_id") for t in existing_pos.get("tp_targets", []) if t.get("order_id")]
-                for oid in old_order_ids:
-                    try:
-                        await self._send_request("DELETE", "/fapi/v1/order", {"symbol": symbol.upper(), "orderId": int(oid)}, action="CANCEL_TP_LIMIT")
-                    except Exception:
-                        pass
-                try:
-                    await self._send_request("DELETE", "/fapi/v1/allOpenOrders", {"symbol": symbol.upper()}, action="CANCEL_ALL_OPEN_ORDERS")
-                except Exception:
-                    pass
+                # 1. Cancel previous TP orders ONLY for this direction before updating to new targets
+                await self.cancel_direction_orders(symbol, side, existing_pos)
 
                 existing_pos["entries_count"] = existing_pos.get("entries_count", 1) + 1
                 existing_pos["original_qty"] = round(total_qty, qty_precision)
@@ -870,6 +861,51 @@ class ExecutionHandler:
         pos_side = "LONG" if side.upper() in ("BUY", "LONG") else "SHORT"
         return positions.get(pos_side)
 
+    async def cancel_direction_orders(self, symbol: str, pos_side: str, target_pos: dict = None):
+        """
+        Cancel only open orders (TP / SL limit orders) belonging to a specific position/direction.
+        Never cancels orders belonging to the opposite direction in hedge mode.
+        """
+        if self.simulation_mode:
+            return
+
+        # 1. Cancel specific tracked order IDs from position state
+        if target_pos:
+            for t in target_pos.get("tp_targets", []):
+                oid = t.get("order_id")
+                if oid:
+                    try:
+                        await self._send_request("DELETE", "/fapi/v1/order", {"symbol": symbol.upper(), "orderId": int(oid)}, action="CANCEL_TP_LIMIT")
+                    except Exception:
+                        pass
+
+        # 2. Query open orders and cancel ONLY orders belonging to this positionSide / direction
+        try:
+            open_orders = await self._send_request("GET", "/fapi/v1/openOrders", {"symbol": symbol.upper()}, action="QUERY_OPEN_ORDERS")
+            if isinstance(open_orders, list):
+                target_p_side = "LONG" if pos_side.upper() in ("BUY", "LONG") else "SHORT"
+                target_order_side = "SELL" if pos_side.upper() in ("BUY", "LONG") else "BUY" # Closing order side
+                
+                for o in open_orders:
+                    o_id = o.get("orderId")
+                    o_p_side = o.get("positionSide", "BOTH").upper()
+                    o_side = o.get("side", "").upper()
+                    
+                    # In Hedge mode, match positionSide. In One-Way mode, match the closing side.
+                    is_match = False
+                    if o_p_side == target_p_side:
+                        is_match = True
+                    elif o_p_side == "BOTH" and o_side == target_order_side:
+                        is_match = True
+                        
+                    if is_match and o_id:
+                        try:
+                            await self._send_request("DELETE", "/fapi/v1/order", {"symbol": symbol.upper(), "orderId": int(o_id)}, action=f"CANCEL_{target_p_side}_LIMIT")
+                        except Exception:
+                            pass
+        except Exception as e:
+            logger.warning(f"Error while safely canceling direction orders for {symbol} {pos_side}: {e}")
+
     async def close_position(self, current_price: float, reason: str, pnl: float, side: str = None, pos_to_close = None, pos_id: str = None):
         """
         Close active position completely on Binance and in DB.
@@ -1003,12 +1039,8 @@ class ExecutionHandler:
             if target_pos in self.active_position:
                 self.active_position.remove(target_pos)
 
-            # Cancel any remaining open orders for this symbol on Binance
-            if not self.simulation_mode:
-                try:
-                    await self._send_request("DELETE", "/fapi/v1/allOpenOrders", {"symbol": symbol.upper()}, action="CANCEL_ALL_OPEN_ORDERS")
-                except Exception:
-                    pass
+            # Cancel remaining open orders ONLY for this closed position/direction
+            await self.cancel_direction_orders(symbol, pos_side, target_pos)
 
             # In-place update of exact order row in 'orders' table
             if self.db:
