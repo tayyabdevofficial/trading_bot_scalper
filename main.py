@@ -101,13 +101,15 @@ class TradingBot:
             if signal != "HOLD":
                 self.db.log_message("INFO", f"[{self.network.upper()} {self.symbol}] Candle closed at {current_price}. Signal: {signal}", bot_id=self.bot_id)
 
-            # Exchange Sync: Ensure local active positions match actual Binance exchange state
+            # Exchange Sync: Ensure local active positions match actual Binance exchange state (1 API call for both Long & Short)
             if not self.execution.simulation_mode and self.execution.active_position:
+                ex_positions = await self.execution.get_all_exchange_positions(self.symbol)
                 for pos in list(self.execution.active_position):
-                    ex_qty = await self.execution.get_exchange_position_qty(pos["symbol"], pos["side"])
+                    pos_side = "LONG" if pos["side"].upper() in ("BUY", "LONG") else "SHORT"
+                    ex_qty = ex_positions.get(pos_side)
                     if ex_qty is not None and ex_qty == 0.0:
                         logger.info(f"[{self.symbol}] Sync check: Position {pos['side']} on Binance is confirmed 0. Syncing local closed position.")
-                        sync_price = pos.get("entry_price", current_price)
+                        sync_price = pos.get("tp_price") or pos.get("entry_price", current_price)
                         pnl = (sync_price - pos["entry_price"]) * pos["qty"] if pos["side"] == "BUY" else (pos["entry_price"] - sync_price) * pos["qty"]
                         await self.execution.close_position(sync_price, "EXCHANGE_SYNC", pnl, pos["side"], pos_to_close=pos)
 

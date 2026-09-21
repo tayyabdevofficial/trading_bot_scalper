@@ -986,6 +986,18 @@ def group_trades_into_positions(raw_trades):
         else:
             # It's an exit or partial exit
             if key not in active_cycles:
+                # Try finding any open cycle for this bot and symbol with opposite side
+                matching_keys = [
+                    k for k, v in active_cycles.items()
+                    if k[0] == bot_id and k[1] == symbol and v.get("entry_trades") and (
+                        (v["entry_trades"][0]["side"] == "BUY" and t["side"] == "SELL") or
+                        (v["entry_trades"][0]["side"] == "SELL" and t["side"] == "BUY")
+                    )
+                ]
+                if matching_keys:
+                    key = matching_keys[-1]
+
+            if key not in active_cycles:
                 # Orphan exit trade
                 closed_cycles.append({
                     "order_id": t.get("order_id") or f"TRADE_{t.get('id', '')}",
@@ -1105,6 +1117,7 @@ def group_trades_into_positions(raw_trades):
                 entries_cnt = max(1, len(entry_trades))
                 closed_cycles.append({
                     "order_id": t.get("order_id") or f"CYCLE_{cycle['open_timestamp']}",
+                    "entry_order_ids": [str(et.get("order_id") or "") for et in entry_trades],
                     "bot_id": bot_id,
                     "network": t.get("network") or (cycle["entry_trades"][0].get("network") if cycle.get("entry_trades") else "mainnet") or "mainnet",
                     "symbol": symbol,
@@ -1138,6 +1151,7 @@ def _get_closed_positions_unified(bot_id=None, network_filter=None):
     all_positions = []
     seen_order_ids = set()
     seen_cycles = set()
+    seen_closures = set()
     
     net = None if network_filter in (None, "all") else network_filter.lower()
     orders = db.get_orders(bot_id=bot_id, network=net, limit=500)
@@ -1147,9 +1161,21 @@ def _get_closed_positions_unified(bot_id=None, network_filter=None):
             seen_order_ids.add(oid)
             seen_order_ids.add(f"POS_{oid}")
             seen_order_ids.add(f"POS_{oid}_ENTRY")
+            seen_order_ids.add(f"POS_{oid}_EXIT")
             
-            cycle_key = f"{ord_row.get('bot_id')}_{ord_row.get('symbol')}_{ord_row.get('created_at')}"
-            seen_cycles.add(cycle_key)
+            created_raw = str(ord_row.get("created_at") or "")
+            updated_raw = str(ord_row.get("updated_at") or "")
+            b_id = ord_row.get("bot_id")
+            sym = ord_row.get("symbol")
+            bot_sym = f"{b_id}_{sym}"
+            
+            seen_cycles.add(f"{bot_sym}_{created_raw}")
+            seen_cycles.add(f"{bot_sym}_{format_utc_timestamp(created_raw)}")
+            if updated_raw:
+                seen_cycles.add(f"{bot_sym}_{updated_raw}")
+                seen_cycles.add(f"{bot_sym}_{format_utc_timestamp(updated_raw)}")
+                seen_closures.add((b_id, sym, updated_raw))
+                seen_closures.add((b_id, sym, format_utc_timestamp(updated_raw)))
             
             tp_targets = []
             if ord_row.get("tp_targets"):
@@ -1213,13 +1239,29 @@ def _get_closed_positions_unified(bot_id=None, network_filter=None):
         legacy_cycles = group_trades_into_positions(trades)
         for cyc in legacy_cycles:
             cyc_oid = str(cyc.get("order_id") or "")
-            cyc_key = f"{cyc.get('bot_id')}_{cyc.get('symbol')}_{cyc.get('open_timestamp')}"
+            cyc_entry_oids = [str(eoid) for eoid in cyc.get("entry_order_ids", [])]
+            cyc_bot = cyc.get("bot_id")
+            cyc_sym = cyc.get("symbol")
+            cyc_ts = str(cyc.get("timestamp") or "")
+            cyc_open_ts = str(cyc.get("open_timestamp") or "")
+            cyc_created_at = str(cyc.get("created_at") or "")
+            cyc_updated_at = str(cyc.get("updated_at") or "")
             
             # Skip if already captured in orders table
-            if cyc_oid in seen_order_ids or cyc_key in seen_cycles:
-                continue
-            # Check if any constituent order id matches
-            if any(oid in seen_order_ids for oid in (cyc_oid, cyc_oid.replace("POS_", "").split("_EXIT")[0])):
+            is_seen = (
+                cyc_oid in seen_order_ids or
+                any(eoid in seen_order_ids for eoid in cyc_entry_oids) or
+                any(eoid.replace("POS_", "").replace("_ENTRY", "") in seen_order_ids for eoid in cyc_entry_oids) or
+                any(cyc_oid.replace("POS_", "").split("_EXIT")[0] in seen_order_ids for _ in [1]) or
+                f"{cyc_bot}_{cyc_sym}_{cyc_created_at}" in seen_cycles or
+                f"{cyc_bot}_{cyc_sym}_{cyc_open_ts}" in seen_cycles or
+                f"{cyc_bot}_{cyc_sym}_{cyc_ts}" in seen_cycles or
+                f"{cyc_bot}_{cyc_sym}_{cyc_updated_at}" in seen_cycles or
+                (cyc_bot, cyc_sym, cyc_ts) in seen_closures or
+                (cyc_bot, cyc_sym, cyc_updated_at) in seen_closures or
+                (cyc_oid.startswith("EXCHANGE_SYNC_") and any(f"{cyc_bot}_{cyc_sym}" in c for c in seen_cycles))
+            )
+            if is_seen:
                 continue
                 
             all_positions.append(cyc)

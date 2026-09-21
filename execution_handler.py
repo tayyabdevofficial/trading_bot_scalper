@@ -8,6 +8,7 @@ import aiohttp
 import urllib.parse
 import uuid
 from datetime import datetime
+from typing import Dict, List, Optional, Tuple
 from config import Config
 
 logger = logging.getLogger("ExecutionHandler")
@@ -833,30 +834,41 @@ class ExecutionHandler:
                             pos_key = f"active_position_bot_{self.bot_id}" if self.bot_id else "active_position"
                             self.db.set_state(pos_key, self.active_position)
 
+    async def get_all_exchange_positions(self, symbol: str) -> Dict[str, float]:
+        """
+        Query Binance exchange for actual open positions for BOTH Long and Short in ONE SINGLE API call.
+        Returns a dict: {'LONG': qty, 'SHORT': qty}.
+        """
+        if self.simulation_mode:
+            return {"LONG": 0.0, "SHORT": 0.0}
+        try:
+            data = await self._send_request("GET", "/fapi/v2/positionRisk", {"symbol": symbol.upper()}, action="QUERY_POSITION_RISK")
+            res = {"LONG": 0.0, "SHORT": 0.0}
+            if isinstance(data, list):
+                for pos in data:
+                    amt = float(pos.get("positionAmt", 0.0))
+                    p_side = pos.get("positionSide", "BOTH").upper()
+                    if p_side == "LONG":
+                        res["LONG"] = abs(amt)
+                    elif p_side == "SHORT":
+                        res["SHORT"] = abs(amt)
+                    elif p_side == "BOTH":
+                        if amt > 0:
+                            res["LONG"] = abs(amt)
+                        elif amt < 0:
+                            res["SHORT"] = abs(amt)
+            return res
+        except Exception as e:
+            logger.error(f"Error querying position risk for {symbol}: {e}")
+            return {"LONG": None, "SHORT": None}
+
     async def get_exchange_position_qty(self, symbol: str, side: str = "BUY"):
         """Query Binance exchange for actual open position quantity for a symbol and side."""
         if self.simulation_mode:
             return 0.0
-        try:
-            data = await self._send_request("GET", "/fapi/v2/positionRisk", {"symbol": symbol.upper()}, action="QUERY_POSITION_RISK")
-            if isinstance(data, list):
-                for pos in data:
-                    amt = float(pos.get("positionAmt", 0.0))
-                    p_side = pos.get("positionSide", "BOTH")
-                    if p_side == "LONG" and side.upper() in ("BUY", "LONG"):
-                        return abs(amt)
-                    elif p_side == "SHORT" and side.upper() in ("SELL", "SHORT"):
-                        return abs(amt)
-                    elif p_side == "BOTH":
-                        if side.upper() in ("BUY", "LONG") and amt > 0:
-                            return abs(amt)
-                        elif side.upper() in ("SELL", "SHORT") and amt < 0:
-                            return abs(amt)
-                return 0.0
-            return None
-        except Exception as e:
-            logger.error(f"Error querying position risk for {symbol}: {e}")
-            return None
+        positions = await self.get_all_exchange_positions(symbol)
+        pos_side = "LONG" if side.upper() in ("BUY", "LONG") else "SHORT"
+        return positions.get(pos_side)
 
     async def close_position(self, current_price: float, reason: str, pnl: float, side: str = None, pos_to_close = None, pos_id: str = None):
         """
