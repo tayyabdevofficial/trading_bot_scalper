@@ -23,7 +23,7 @@ if not binance_logger.handlers:
 
 class KlineCacheManager:
     """
-    Manages local persistent 7-day CSV kline storage and gap-filling.
+    Manages local persistent 2-day CSV kline storage and gap-filling.
     Directory: data/live_klines/{symbol}_{interval}.csv
     """
     CACHE_DIR = os.path.join("data", "live_klines")
@@ -46,12 +46,12 @@ class KlineCacheManager:
         return cls.INTERVAL_SECONDS.get(interval, 300)
 
     @classmethod
-    async def sync_klines(cls, symbol: str, interval: str, days: int = 7) -> List[dict]:
+    async def sync_klines(cls, symbol: str, interval: str, days: int = 2) -> List[dict]:
         """
-        Loads 7 days of klines from local CSV.
-        If file is missing, downloads 7 days from Binance.
+        Loads 2 days of klines from local CSV.
+        If file is missing, downloads 2 days from Binance.
         If file exists with missing gap, downloads ONLY the missing gap candles.
-        Prunes candles older than 7 days and saves to CSV.
+        Prunes candles older than 2 days and saves to CSV.
         """
         cls._ensure_dir()
         csv_path = cls.get_csv_path(symbol, interval)
@@ -95,17 +95,17 @@ class KlineCacheManager:
                 cls._save_df_to_csv(existing_df, csv_path)
                 return cls._df_to_klines_list(existing_df)
 
-        # Full 7-day fetch if missing or insufficient
+        # Full 2-day fetch if missing or insufficient
         start_ms = int(cutoff_dt.timestamp() * 1000)
         end_ms = int(now.timestamp() * 1000)
-        logger.info(f"[{symbol} {interval}] Initializing local CSV with 7-day historical klines from Binance...")
+        logger.info(f"[{symbol} {interval}] Initializing local CSV with 2-day historical klines from Binance...")
         full_klines = await cls._fetch_binance_range(symbol, interval, start_ms=start_ms, end_ms=end_ms)
         if full_klines:
             df = pd.DataFrame(full_klines)
             df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
             df = df.drop_duplicates(subset=["timestamp"], keep="last").sort_values("timestamp").reset_index(drop=True)
             cls._save_df_to_csv(df, csv_path)
-            logger.info(f"[{symbol} {interval}] Saved {len(df)} candles (7 days) to {csv_path}.")
+            logger.info(f"[{symbol} {interval}] Saved {len(df)} candles (2 days) to {csv_path}.")
             return cls._df_to_klines_list(df)
 
         return []
@@ -221,7 +221,7 @@ class _SharedMarketStream:
         self.rest_url = "https://fapi.binance.com/fapi/v1/klines"
         
         self.klines: List[dict] = []
-        self.max_klines = 2200  # Holds 7 days of 5m candles (~2016) in memory
+        self.max_klines = 1000  # Holds 2 days of 5m candles (~576) in memory
         self.running = False
         self._ws_task: Optional[asyncio.Task] = None
         self._fetch_task: Optional[asyncio.Task] = None
@@ -270,15 +270,15 @@ class _SharedMarketStream:
         logger.info(f"[{self.symbol} {self.interval}] SharedMarketStream stopped.")
 
     async def fetch_historical_data(self):
-        """Load 7 days of historical candles from local CSV and fill any missing gaps."""
+        """Load 2 days of historical candles from local CSV and fill any missing gaps."""
         if len(self.klines) >= 50:
             return  # Already populated in memory
 
-        logger.info(f"[{self.symbol} {self.interval}] Syncing 7-day historical klines cache...")
-        loaded = await KlineCacheManager.sync_klines(self.symbol, self.interval, days=7)
+        logger.info(f"[{self.symbol} {self.interval}] Syncing 2-day historical klines cache...")
+        loaded = await KlineCacheManager.sync_klines(self.symbol, self.interval, days=2)
         if loaded:
             self.klines = loaded[-self.max_klines:]
-            logger.info(f"[{self.symbol} {self.interval}] Successfully loaded {len(self.klines)} candles from 7-day CSV cache.")
+            logger.info(f"[{self.symbol} {self.interval}] Successfully loaded {len(self.klines)} candles from 2-day CSV cache.")
         else:
             logger.warning(f"[{self.symbol} {self.interval}] Could not load historical candles from cache.")
 
@@ -502,9 +502,9 @@ class DataEngine:
 
     @staticmethod
     async def fetch_external_klines(symbol, interval, limit=100):
-        """Fetch historical candles for any timeframe from local 7-day CSV cache / Binance."""
+        """Fetch historical candles for any timeframe from local 2-day CSV cache / Binance."""
         try:
-            klines = await KlineCacheManager.sync_klines(symbol, interval, days=7)
+            klines = await KlineCacheManager.sync_klines(symbol, interval, days=2)
             if klines:
                 df = pd.DataFrame(klines)
                 return df.iloc[-limit:] if len(df) > limit else df
