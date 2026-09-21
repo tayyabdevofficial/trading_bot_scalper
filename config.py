@@ -17,6 +17,7 @@ class Config:
     RISK_PERCENT = float(os.getenv("RISK_PERCENT", "2.0"))
     STOP_LOSS_PCT = float(os.getenv("STOP_LOSS_PCT", "1.0"))
     TAKE_PROFIT_PCT = float(os.getenv("TAKE_PROFIT_PCT", "2.0"))
+    MARGIN_TYPE = os.getenv("MARGIN_TYPE", "CROSSED").upper()
     
     # Strategy parameters
     EMA_SHORT = int(os.getenv("EMA_SHORT", "9"))

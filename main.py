@@ -177,8 +177,9 @@ class TradingBot:
         logger.info(f"Starting bot {self.bot_id} ({self.symbol} on {self.network.upper()})...")
         self.db.log_message("INFO", f"Bot Instance {self.bot_id} ({self.symbol} - {self.network.upper()}) Started.", bot_id=self.bot_id)
         
-        # Sync leverage setting on exchange if live
+        # Sync leverage and margin type (CROSSED / Cross Margin) on exchange if live
         await self.execution.set_leverage(self.symbol, self.risk_manager.leverage)
+        await self.execution.set_margin_type(self.symbol, Config.MARGIN_TYPE)
         await self.data_engine.start()
 
     async def stop(self, close_positions=True):

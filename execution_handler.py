@@ -165,6 +165,8 @@ class ExecutionHandler:
                 action = "NEW_ORDER" if method.upper() == "POST" else ("CANCEL_ORDER" if method.upper() == "DELETE" else "QUERY_ORDER")
             elif "/leverage" in endpoint:
                 action = "SET_LEVERAGE"
+            elif "/marginType" in endpoint:
+                action = "SET_MARGIN_TYPE"
             elif "/balance" in endpoint or "/account" in endpoint:
                 action = "QUERY_ACCOUNT"
             else:
@@ -269,6 +271,22 @@ class ExecutionHandler:
             logger.info(f"Set leverage success: {res}")
         except Exception as e:
             logger.error(f"Error setting leverage: {e}")
+
+    async def set_margin_type(self, symbol: str, margin_type: str = None):
+        """Set margin type on Binance Futures (CROSSED or ISOLATED). Defaults to Config.MARGIN_TYPE (CROSSED)."""
+        target_margin = (margin_type or getattr(Config, "MARGIN_TYPE", "CROSSED")).upper()
+        if self.simulation_mode:
+            logger.info(f"[SIMULATION] Set margin type for {symbol} to {target_margin}")
+            return
+            
+        try:
+            endpoint = "/fapi/v1/marginType"
+            params = {"symbol": symbol.upper(), "marginType": target_margin}
+            res = await self._send_request("POST", endpoint, params, action="SET_MARGIN_TYPE")
+            logger.info(f"Set margin type for {symbol} to {target_margin}: {res}")
+            return res
+        except Exception as e:
+            logger.error(f"Error setting margin type for {symbol}: {e}")
 
     async def get_balance(self) -> float:
         if self.simulation_mode:
@@ -523,10 +541,11 @@ class ExecutionHandler:
                     self.is_hedge = False
             is_hedge = self.is_hedge
 
-            # Set isolated margin mode
+            # Set cross margin mode (CROSSED)
             try:
+                target_margin = getattr(Config, "MARGIN_TYPE", "CROSSED").upper()
                 endpoint_margin = "/fapi/v1/marginType"
-                params_margin = {"symbol": symbol.upper(), "marginType": "ISOLATED"}
+                params_margin = {"symbol": symbol.upper(), "marginType": target_margin}
                 await self._send_request("POST", endpoint_margin, params_margin, action="SET_MARGIN_TYPE")
             except Exception:
                 pass
