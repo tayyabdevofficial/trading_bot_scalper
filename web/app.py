@@ -537,6 +537,47 @@ async def create_bot(req: BotCreateRequest):
     )
     return {"status": "success", "bot_id": bot_id, "network": network}
 
+@app.post("/api/bots/{bot_id}/copy-to-mainnet")
+async def copy_bot_to_mainnet(bot_id: int):
+    if not manager:
+        raise HTTPException(status_code=500, detail="Bot manager not initialized")
+    bot = db.get_bot(bot_id)
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+        
+    symbol = bot.get("symbol", "").upper()
+    strategy_name = bot.get("strategy_name", "")
+    parameters = bot.get("parameters", {})
+    
+    if strategy_name not in STRATEGY_MAP:
+        raise HTTPException(status_code=400, detail=f"Strategy '{strategy_name}' is not registered")
+        
+    target_interval = parameters.get("candle_interval", "5m")
+    
+    # Check if this bot configuration already exists on mainnet
+    existing_mainnet_bots = db.get_bots(network="mainnet")
+    for existing in existing_mainnet_bots:
+        if (existing["symbol"].upper() == symbol and 
+            existing["strategy_name"] == strategy_name and 
+            existing["parameters"].get("candle_interval", "5m") == target_interval):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"A Mainnet bot with symbol '{symbol}', strategy '{strategy_name}', and timeframe '{target_interval}' already exists."
+            )
+            
+    new_bot_id = await manager.add_bot(
+        symbol=symbol,
+        strategy_name=strategy_name,
+        parameters_dict=parameters,
+        network="mainnet"
+    )
+    return {
+        "status": "success",
+        "bot_id": new_bot_id,
+        "network": "mainnet",
+        "message": f"Successfully copied Bot #{bot_id} ({symbol} - {strategy_name}) to Mainnet as Bot #{new_bot_id}."
+    }
+
 class DeployBacktestRequest(BaseModel):
     network: str = "testnet"
     top_n: Optional[int] = None

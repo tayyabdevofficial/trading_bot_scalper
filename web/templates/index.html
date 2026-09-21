@@ -624,6 +624,29 @@
             color: #0f172a;
         }
 
+        .btn-sm-copy {
+            padding: 0.3rem 0.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.78rem;
+            cursor: pointer;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            transition: all 0.18s;
+            white-space: nowrap;
+        }
+        .btn-sm-copy:hover {
+            background: var(--accent-green);
+            color: #0f172a;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+        }
+
         /* Pagination Controls */
         .btn-page-nav {
             padding: 0.35rem 0.65rem;
@@ -1777,6 +1800,7 @@
                 const leverage = b.parameters?.leverage ? `${b.parameters.leverage}x` : '—';
                 const candleInterval = b.parameters?.candle_interval || '—';
                 const editIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+                const copyIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
 
                 return `
                     <tr id="bot-row-${b.id}" class="${b.position && b.position.length > 0 ? 'active-pos-row' : ''}">
@@ -1787,6 +1811,9 @@
                                 <a class="btn-sm-view" title="View details" href="/bot-info?bot_id=${b.id}" style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2); color: var(--accent-blue); cursor: pointer; text-decoration: none;">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                 </a>
+                                ${!isMainnet ? `
+                                <button class="btn-sm-copy" title="Copy to Mainnet with same values" onclick="copyBotToMainnet(${b.id})">${copyIcon}</button>
+                                ` : ''}
                                 <button class="btn-sm-delete" title="Delete bot" onclick="deleteBot(${b.id})">${deleteIcon}</button>
                             </div>
                         </td>
@@ -2511,6 +2538,29 @@
                 fetchBots();
             } catch (e) {
                 showToast("Failed to delete bot instance: " + e, 'error');
+            }
+        }
+
+        // Copy Testnet Bot to Mainnet with same values
+        async function copyBotToMainnet(id) {
+            const bot = (loadedBots || []).find(b => b.id === id);
+            const promptMsg = bot 
+                ? `Are you sure you want to copy Testnet Bot #${id} (${bot.symbol} - ${bot.strategy_name}) to Mainnet with the exact same values?`
+                : `Are you sure you want to copy Bot #${id} to Mainnet?`;
+            
+            if (!confirm(promptMsg)) return;
+
+            try {
+                const resp = await fetch(apiBase + `/bots/${id}/copy-to-mainnet`, { method: 'POST' });
+                const data = await resp.json();
+                if (!resp.ok) {
+                    showToast("Failed to copy bot to Mainnet: " + (data.detail || "Server error"), 'error');
+                    return;
+                }
+                showToast(data.message || `Bot #${id} successfully copied to Mainnet!`, 'success');
+                fetchBots();
+            } catch (e) {
+                showToast("Failed to copy bot to Mainnet: " + e, 'error');
             }
         }
 
