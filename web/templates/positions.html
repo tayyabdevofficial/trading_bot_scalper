@@ -451,6 +451,10 @@
                 const totalPnlClass = totalPnl >= 0 ? 'pnl-text pos' : 'pnl-text neg';
                 const formattedTotalPnl = totalPnl >= 0 ? `+$${totalPnl.toFixed(2)}` : `-$${Math.abs(totalPnl).toFixed(2)}`;
 
+                const dcaBadge = (pos.entries_count && pos.entries_count > 1)
+                    ? `<span style="background:rgba(168,85,247,0.18); color:#c084fc; border:1px solid rgba(168,85,247,0.35); padding:1px 6px; border-radius:4px; font-size:0.72rem; font-weight:700; margin-left:4px;" title="${pos.entries_count} Total Entries (Initial + ${pos.entries_count - 1} DCA)">DCA (${pos.entries_count}x)</span>`
+                    : '';
+
                 let tpDisplay = pos.tp_price ? '$' + formatPrice(pos.tp_price) : '-';
                 if (pos.tp_targets && pos.tp_targets.length > 0) {
                     const hitCount = pos.tp_targets.filter(t => t.hit).length;
@@ -488,7 +492,7 @@
                         <td data-label="Network">${netBadge}</td>
                         <td data-label="Symbol"><strong>${b.symbol}</strong></td>
                         <td data-label="Side"><span class="${sideClass}">${displaySide}</span></td>
-                        <td data-label="Qty / Size">${pos.qty} units / $${sizeWithLev.toFixed(2)}</td>
+                        <td data-label="Qty / Size">${pos.qty} units ${dcaBadge}<br/><span style="color:var(--text-muted);font-size:0.82rem;">$${sizeWithLev.toFixed(2)}</span></td>
                         <td data-label="Entry / Current">$${formatPrice(pos.entry_price)} / $${b.latest_price ? formatPrice(b.latest_price) : '—'}</td>
                         <td data-label="Stop Loss">$${pos.sl_price ? formatPrice(pos.sl_price) : '-'}</td>
                         <td data-label="Take Profit">${tpDisplay}</td>
@@ -540,6 +544,7 @@
             if (endPage - startPage + 1 < maxVisibleButtons) {
                 startPage = Math.max(1, endPage - maxVisibleButtons + 1);
             }
+            startPage = Math.max(1, startPage);
 
             for (let p = startPage; p <= endPage; p++) {
                 const activeClass = p === posPage ? 'active' : '';

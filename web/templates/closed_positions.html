@@ -681,6 +681,10 @@
 
                 const exitReasonText = t.status || t.exit_reason || t.type || 'CLOSED';
 
+                const dcaBadge = (t.entries_count && t.entries_count > 1)
+                    ? `<span style="background:rgba(168,85,247,0.18); color:#c084fc; border:1px solid rgba(168,85,247,0.35); padding:1px 6px; border-radius:4px; font-size:0.72rem; font-weight:700; margin-left:4px;" title="${t.entries_count} Total Entries (Initial + ${t.entries_count - 1} DCA)">DCA (${t.entries_count}x)</span>`
+                    : '';
+
                 return `
                     <tr>
                         <td data-label="Network">${netBadge}</td>
@@ -692,7 +696,7 @@
                         <td data-label="Bot ID"><a href="/bot-info?bot_id=${t.bot_id}" style="color: var(--accent-purple); font-weight: 700; text-decoration: underline;">#${t.bot_id} (${t.strategy_name || 'Bot'})</a></td>
                         <td data-label="Symbol"><strong>${t.symbol}</strong></td>
                         <td data-label="Side"><span class="${sideClass}">${displaySide}</span></td>
-                        <td data-label="Quantity">${qty} units</td>
+                        <td data-label="Quantity">${qty} units ${dcaBadge}</td>
                         <td data-label="Open Price">$${formatPrice(openPrice)}</td>
                         <td data-label="Close Price">$${formatPrice(closePrice)}</td>
                         <td data-label="Size">$${sizeWithLev.toFixed(2)} / <strong style="color: var(--accent-blue)">$${sizeWithoutLev.toFixed(2)}</strong></td>
@@ -737,6 +741,7 @@
             if (endPage - startPage + 1 < maxVisibleButtons) {
                 startPage = Math.max(1, endPage - maxVisibleButtons + 1);
             }
+            startPage = Math.max(1, startPage);
 
             for (let p = startPage; p <= endPage; p++) {
                 const activeClass = p === tradePage ? 'active' : '';

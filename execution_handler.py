@@ -410,6 +410,7 @@ class ExecutionHandler:
             "tp_price": float(tp_price),
             "tp_targets": [],
             "released_pnl": 0.0,
+            "entries_count": 1,
             "timestamp": datetime.utcnow().isoformat()
         }
 
@@ -431,6 +432,7 @@ class ExecutionHandler:
                     new_sl = avg_entry_price * (1 + sl_pct) if sl_pct > 0 else 0.0
                     
                 new_tp = avg_entry_price * (1 + bot_tp_pct/100) if side.upper() == "BUY" else avg_entry_price * (1 - bot_tp_pct/100)
+                existing_pos["entries_count"] = existing_pos.get("entries_count", 1) + 1
                 existing_pos["original_qty"] = round(total_qty, qty_precision)
                 existing_pos["qty"] = round(total_qty, qty_precision)
                 existing_pos["entry_price"] = round(avg_entry_price, price_precision)
@@ -446,27 +448,55 @@ class ExecutionHandler:
                 new_pos["tp_targets"] = self.calculate_tp_targets(side, float(price), float(qty), bot_tp_pct, price_precision, qty_precision)
                 self.active_position.append(new_pos)
 
-            # Insert order in the dedicated orders table
+            # Insert / update order in the dedicated orders table
             if self.db:
                 pos_key = f"active_position_bot_{self.bot_id}" if self.bot_id else "active_position"
                 self.db.set_state(pos_key, self.active_position)
                 
-                # Create record in orders table
-                self.db.create_order(
-                    order_id=sim_order_id,
-                    bot_id=self.bot_id,
-                    network=self.network,
-                    symbol=symbol,
-                    side=side,
-                    order_type="MARKET_DCA" if is_dca else "MARKET_ENTRY",
-                    entry_price=price,
-                    qty=qty,
-                    sl_price=sl_price,
-                    tp_price=tp_price,
-                    tp_targets=new_pos.get("tp_targets") if not is_dca else existing_pos.get("tp_targets"),
-                    position_side="LONG" if side.upper() == "BUY" else "SHORT",
-                    status="OPEN"
-                )
+                if is_dca:
+                    primary_ord_id = existing_pos.get("order_ids", [sim_order_id])[0]
+                    self.db.update_order_dca(
+                        order_id=primary_ord_id,
+                        entry_price=existing_pos["entry_price"],
+                        qty=existing_pos["qty"],
+                        tp_price=existing_pos["tp_price"],
+                        tp_targets=existing_pos["tp_targets"],
+                        entries_count=existing_pos["entries_count"]
+                    )
+                    # Also record child DCA order marked as CONSOLIDATED_DCA for history
+                    self.db.create_order(
+                        order_id=sim_order_id,
+                        bot_id=self.bot_id,
+                        network=self.network,
+                        symbol=symbol,
+                        side=side,
+                        order_type="MARKET_DCA",
+                        entry_price=price,
+                        qty=qty,
+                        sl_price=sl_price,
+                        tp_price=tp_price,
+                        tp_targets=existing_pos.get("tp_targets"),
+                        position_side="LONG" if side.upper() == "BUY" else "SHORT",
+                        status="CONSOLIDATED_DCA",
+                        entries_count=1
+                    )
+                else:
+                    self.db.create_order(
+                        order_id=sim_order_id,
+                        bot_id=self.bot_id,
+                        network=self.network,
+                        symbol=symbol,
+                        side=side,
+                        order_type="MARKET_ENTRY",
+                        entry_price=price,
+                        qty=qty,
+                        sl_price=sl_price,
+                        tp_price=tp_price,
+                        tp_targets=new_pos.get("tp_targets"),
+                        position_side="LONG" if side.upper() == "BUY" else "SHORT",
+                        status="OPEN",
+                        entries_count=1
+                    )
                 self.db.log_trade(
                     symbol=symbol,
                     side=side,
@@ -477,9 +507,9 @@ class ExecutionHandler:
                     order_id=sim_order_id,
                     bot_id=self.bot_id
                 )
-                self.db.log_message("INFO", f"[SIMULATION] Same-direction trade executed for {qty} {symbol} at {price} (DCA/Pyramid)." if is_dca else f"[SIMULATION] Opened {side} position of {qty} {symbol} at {price}", bot_id=self.bot_id)
+                self.db.log_message("INFO", f"[SIMULATION] Same-direction trade executed for {qty} {symbol} at {price} (DCA/Pyramid, {existing_pos['entries_count']}x)." if is_dca else f"[SIMULATION] Opened {side} position of {qty} {symbol} at {price}", bot_id=self.bot_id)
 
-            logger.info(f"[SIMULATION] Bot {self.bot_id} Executed {side} order of {qty} {symbol} at {price} (DCA={is_dca})")
+            logger.info(f"[SIMULATION] Bot {self.bot_id} Executed {side} order of {qty} {symbol} at {price} (DCA={is_dca}, count={existing_pos['entries_count'] if is_dca else 1})")
             return
 
         # ── LIVE / REAL TESTNET BINANCE API EXECUTION ──
@@ -539,6 +569,7 @@ class ExecutionHandler:
                     
                 new_sl = round(new_sl, price_precision)
                 new_tp = avg_entry_price * (1 + bot_tp_pct/100) if side.upper() == "BUY" else avg_entry_price * (1 - bot_tp_pct/100)
+                existing_pos["entries_count"] = existing_pos.get("entries_count", 1) + 1
                 existing_pos["original_qty"] = round(total_qty, qty_precision)
                 existing_pos["qty"] = round(total_qty, qty_precision)
                 existing_pos["entry_price"] = round(avg_entry_price, price_precision)
@@ -572,21 +603,49 @@ class ExecutionHandler:
                 pos_key = f"active_position_bot_{self.bot_id}" if self.bot_id else "active_position"
                 self.db.set_state(pos_key, self.active_position)
                 
-                self.db.create_order(
-                    order_id=order_id,
-                    bot_id=self.bot_id,
-                    network=self.network,
-                    symbol=symbol,
-                    side=side,
-                    order_type="MARKET_DCA" if is_dca else "MARKET_ENTRY",
-                    entry_price=entry_price,
-                    qty=qty,
-                    sl_price=sl_price,
-                    tp_price=tp_price,
-                    tp_targets=new_pos.get("tp_targets") if not is_dca else existing_pos.get("tp_targets"),
-                    position_side="LONG" if side.upper() == "BUY" else "SHORT",
-                    status="OPEN"
-                )
+                if is_dca:
+                    primary_ord_id = existing_pos.get("order_ids", [order_id])[0]
+                    self.db.update_order_dca(
+                        order_id=primary_ord_id,
+                        entry_price=existing_pos["entry_price"],
+                        qty=existing_pos["qty"],
+                        tp_price=existing_pos["tp_price"],
+                        tp_targets=existing_pos["tp_targets"],
+                        entries_count=existing_pos["entries_count"]
+                    )
+                    self.db.create_order(
+                        order_id=order_id,
+                        bot_id=self.bot_id,
+                        network=self.network,
+                        symbol=symbol,
+                        side=side,
+                        order_type="MARKET_DCA",
+                        entry_price=entry_price,
+                        qty=qty,
+                        sl_price=sl_price,
+                        tp_price=tp_price,
+                        tp_targets=existing_pos.get("tp_targets"),
+                        position_side="LONG" if side.upper() == "BUY" else "SHORT",
+                        status="CONSOLIDATED_DCA",
+                        entries_count=1
+                    )
+                else:
+                    self.db.create_order(
+                        order_id=order_id,
+                        bot_id=self.bot_id,
+                        network=self.network,
+                        symbol=symbol,
+                        side=side,
+                        order_type="MARKET_ENTRY",
+                        entry_price=entry_price,
+                        qty=qty,
+                        sl_price=sl_price,
+                        tp_price=tp_price,
+                        tp_targets=new_pos.get("tp_targets"),
+                        position_side="LONG" if side.upper() == "BUY" else "SHORT",
+                        status="OPEN",
+                        entries_count=1
+                    )
                 self.db.log_trade(
                     symbol=symbol,
                     side=side,
@@ -597,7 +656,7 @@ class ExecutionHandler:
                     order_id=f"POS_{order_id}_ENTRY",
                     bot_id=self.bot_id
                 )
-                self.db.log_message("INFO", f"[{self.network.upper()}] Executed {side} order at {entry_price} (Same-direction add/DCA)" if is_dca else f"[{self.network.upper()}] Opened {side} position on Binance Futures at {entry_price}", bot_id=self.bot_id)
+                self.db.log_message("INFO", f"[{self.network.upper()}] Executed {side} order at {entry_price} (Same-direction add/DCA, {existing_pos['entries_count']}x)" if is_dca else f"[{self.network.upper()}] Opened {side} position on Binance Futures at {entry_price}", bot_id=self.bot_id)
 
             logger.info(f"[{self.network.upper()}] Bot {self.bot_id} Executed {side} order of {qty} {symbol} at {entry_price} (DCA={is_dca})")
 
@@ -701,13 +760,26 @@ class ExecutionHandler:
                     # In-place update for exact order row in the database
                     ord_id = pos.get("order_id")
                     if self.db and ord_id:
+                        primary_ord_id = pos.get("order_ids", [ord_id])[0] if pos.get("order_ids") else ord_id
+                        entries_count = pos.get("entries_count", 1)
                         self.db.update_order_exit(
-                            order_id=ord_id,
+                            order_id=primary_ord_id,
                             close_price=target["target_price"],
                             realized_pnl=pnl,
                             status="TP_HIT",
-                            exit_reason=f"TP_{target.get('pct', 100)}%"
+                            exit_reason=f"TP_{target.get('pct', 100)}%",
+                            entries_count=entries_count
                         )
+                        for add_oid in pos.get("order_ids", []):
+                            if add_oid != primary_ord_id:
+                                self.db.update_order_exit(
+                                    order_id=add_oid,
+                                    close_price=target["target_price"],
+                                    realized_pnl=0.0,
+                                    status="CONSOLIDATED_DCA",
+                                    exit_reason="CONSOLIDATED_DCA",
+                                    entries_count=1
+                                )
                         pos_key = f"active_position_bot_{self.bot_id}" if self.bot_id else "active_position"
                         self.db.set_state(pos_key, self.active_position)
                         self.db.log_trade(
@@ -797,6 +869,8 @@ class ExecutionHandler:
         pos_side = target_pos["side"]
         qty = target_pos["qty"]
         target_ord_id = target_pos.get("order_id") or f"ORD_{int(time.time() * 1000)}_{self.bot_id}"
+        primary_ord_id = target_pos.get("order_ids", [target_ord_id])[0] if target_pos.get("order_ids") else target_ord_id
+        entries_count = target_pos.get("entries_count", 1)
         close_side = "SELL" if pos_side == "BUY" else "BUY"
         exit_status = "SL_HIT" if reason == "STOP_LOSS" else ("OPPOSITE_SIGNAL_CLOSED" if "OPPOSITE" in reason.upper() else "CLOSED")
 
@@ -807,22 +881,24 @@ class ExecutionHandler:
                 self.virtual_balance = current_balance + pnl
                 self.db.set_state("virtual_balance", self.virtual_balance)
                 
-                # In-place update of exact order row in 'orders' table
+                # In-place update of exact primary order row in 'orders' table
                 self.db.update_order_exit(
-                    order_id=target_ord_id,
+                    order_id=primary_ord_id,
                     close_price=current_price,
                     realized_pnl=pnl,
                     status=exit_status,
-                    exit_reason=reason
+                    exit_reason=reason,
+                    entries_count=entries_count
                 )
                 for add_oid in target_pos.get("order_ids", []):
-                    if add_oid != target_ord_id:
+                    if add_oid != primary_ord_id:
                         self.db.update_order_exit(
                             order_id=add_oid,
                             close_price=current_price,
                             realized_pnl=0.0,
-                            status=exit_status,
-                            exit_reason=reason
+                            status="CONSOLIDATED_DCA",
+                            exit_reason="CONSOLIDATED_DCA",
+                            entries_count=1
                         )
 
                 if target_pos in self.active_position:
@@ -841,7 +917,7 @@ class ExecutionHandler:
                     bot_id=self.bot_id
                 )
                 self.db.log_pnl(self.virtual_balance, pnl)
-                self.db.log_message("INFO", f"[SIMULATION] Closed {pos_side} position via {reason} at {current_price}. PnL: {pnl:.2f}", bot_id=self.bot_id)
+                self.db.log_message("INFO", f"[SIMULATION] Closed {pos_side} position via {reason} at {current_price} ({entries_count}x entries). PnL: {pnl:.2f}", bot_id=self.bot_id)
                 
             if target_pos in self.active_position:
                 self.active_position.remove(target_pos)
@@ -897,20 +973,22 @@ class ExecutionHandler:
                 self.db.set_state(pos_key, self.active_position)
                 
                 self.db.update_order_exit(
-                    order_id=target_ord_id,
+                    order_id=primary_ord_id,
                     close_price=close_price,
                     realized_pnl=pnl,
                     status=exit_status,
-                    exit_reason=reason
+                    exit_reason=reason,
+                    entries_count=entries_count
                 )
                 for add_oid in target_pos.get("order_ids", []):
-                    if add_oid != target_ord_id:
+                    if add_oid != primary_ord_id:
                         self.db.update_order_exit(
                             order_id=add_oid,
                             close_price=close_price,
                             realized_pnl=0.0,
-                            status=exit_status,
-                            exit_reason=reason
+                            status="CONSOLIDATED_DCA",
+                            exit_reason="CONSOLIDATED_DCA",
+                            entries_count=1
                         )
 
                 self.db.log_trade(
@@ -928,7 +1006,7 @@ class ExecutionHandler:
                     self.db.log_pnl(new_balance, pnl)
                 except Exception:
                     pass
-                self.db.log_message("INFO", f"[{self.network.upper()}] {pos_side} position closed via {reason} at {close_price}. PnL: {pnl:.2f}", bot_id=self.bot_id)
+                self.db.log_message("INFO", f"[{self.network.upper()}] {pos_side} position closed via {reason} at {close_price} ({entries_count}x entries). PnL: {pnl:.2f}", bot_id=self.bot_id)
 
         except Exception as e:
             logger.error(f"Failed to close position for bot {self.bot_id}: {e}")

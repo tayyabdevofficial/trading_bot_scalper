@@ -730,6 +730,7 @@
                     const pnlSign = pnl >= 0 ? '+' : '';
                     const pnlClass = pnl >= 0 ? 'pnl-value pos' : 'pnl-value neg';
                     
+                    const dcaBadge = (pos.entries_count && pos.entries_count > 1) ? ` <span style="color:#c084fc; font-weight:700; font-size:0.75rem;">(DCA ${pos.entries_count}x)</span>` : '';
                     positionsHtml += `
                         <div class="position-detail-card" style="margin-top: 0.5rem;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 0.35rem;">
@@ -739,7 +740,7 @@
                             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; font-size: 0.85rem;">
                                 <div class="detail-item">
                                     <span class="detail-label">Qty</span>
-                                    <span class="detail-value">${pos.qty}</span>
+                                    <span class="detail-value">${pos.qty}${dcaBadge}</span>
                                 </div>
                                 <div class="detail-item">
                                     <span class="detail-label">Entry Price</span>

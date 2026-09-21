@@ -59,9 +59,14 @@ class Database:
                     realized_pnl REAL DEFAULT 0.0,
                     exit_reason TEXT DEFAULT NULL,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    entries_count INTEGER DEFAULT 1
                 )
             """)
+            try:
+                cursor.execute("ALTER TABLE orders ADD COLUMN entries_count INTEGER DEFAULT 1")
+            except Exception:
+                pass
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_bot_id ON orders(bot_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_orders_network ON orders(network)")
@@ -461,7 +466,7 @@ class Database:
 
     # --- DEDICATED ORDERS MANAGEMENT ---
     def create_order(self, order_id, bot_id, network, symbol, side, order_type, entry_price, qty,
-                     sl_price=None, tp_price=None, tp_targets=None, position_side="BOTH", status="OPEN"):
+                     sl_price=None, tp_price=None, tp_targets=None, position_side="BOTH", status="OPEN", entries_count=1):
         """Insert a newly opened order. Returns the order ID or DB row ID."""
         now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         tp_targets_str = json.dumps(tp_targets) if tp_targets is not None else None
@@ -472,36 +477,69 @@ class Database:
                 INSERT INTO orders (
                     order_id, bot_id, network, symbol, side, position_side, order_type,
                     status, entry_price, qty, sl_price, tp_price, tp_targets,
-                    realized_pnl, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.0, ?, ?)
+                    realized_pnl, created_at, updated_at, entries_count
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0.0, ?, ?, ?)
                 ON CONFLICT(order_id) DO UPDATE SET
                     entry_price = excluded.entry_price,
                     qty = excluded.qty,
-                    updated_at = excluded.updated_at
+                    updated_at = excluded.updated_at,
+                    entries_count = excluded.entries_count
             """, (
                 order_id, bot_id, net, symbol.upper(), side.upper(), position_side.upper(),
                 order_type, status, float(entry_price), float(qty),
                 float(sl_price) if sl_price is not None else None,
                 float(tp_price) if tp_price is not None else None,
-                tp_targets_str, now_str, now_str
+                tp_targets_str, now_str, now_str, int(entries_count)
             ))
             conn.commit()
             return cursor.lastrowid
 
-    def update_order_exit(self, order_id, close_price, realized_pnl, status="CLOSED", exit_reason=None):
-        """Update that EXACT order row when profit is booked (TP hit), stop loss (SL hit), or closed."""
+    def update_order_dca(self, order_id, entry_price, qty, tp_price=None, tp_targets=None, entries_count=1):
+        """Update existing primary order when DCA is executed (updates weighted avg entry price, total qty, TP targets & count)."""
         now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        tp_targets_str = json.dumps(tp_targets) if tp_targets is not None else None
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE orders
-                SET status = ?,
-                    close_price = ?,
-                    realized_pnl = ?,
-                    exit_reason = ?,
+                SET entry_price = ?,
+                    qty = ?,
+                    tp_price = ?,
+                    tp_targets = ?,
+                    entries_count = ?,
                     updated_at = ?
                 WHERE order_id = ?
-            """, (status, float(close_price), float(realized_pnl), exit_reason or status, now_str, str(order_id)))
+            """, (float(entry_price), float(qty), float(tp_price) if tp_price is not None else None,
+                  tp_targets_str, int(entries_count), now_str, str(order_id)))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def update_order_exit(self, order_id, close_price, realized_pnl, status="CLOSED", exit_reason=None, entries_count=None):
+        """Update that EXACT order row when profit is booked (TP hit), stop loss (SL hit), or closed."""
+        now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if entries_count is not None:
+                cursor.execute("""
+                    UPDATE orders
+                    SET status = ?,
+                        close_price = ?,
+                        realized_pnl = ?,
+                        exit_reason = ?,
+                        entries_count = ?,
+                        updated_at = ?
+                    WHERE order_id = ?
+                """, (status, float(close_price), float(realized_pnl), exit_reason or status, int(entries_count), now_str, str(order_id)))
+            else:
+                cursor.execute("""
+                    UPDATE orders
+                    SET status = ?,
+                        close_price = ?,
+                        realized_pnl = ?,
+                        exit_reason = ?,
+                        updated_at = ?
+                    WHERE order_id = ?
+                """, (status, float(close_price), float(realized_pnl), exit_reason or status, now_str, str(order_id)))
             conn.commit()
             return cursor.rowcount > 0
 

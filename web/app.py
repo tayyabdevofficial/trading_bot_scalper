@@ -435,6 +435,8 @@ async def get_positions_api(
                     "is_running": True
                 }
                 for p in positions:
+                    p["entries_count"] = int(p.get("entries_count") or 1)
+                    p["dca_count"] = max(0, p["entries_count"] - 1)
                     all_open_positions.append({"bot": bot_info, "pos": p})
 
     # 2. Also check DB active position states for bots not currently in memory
@@ -465,6 +467,8 @@ async def get_positions_api(
                 }
                 positions = saved_positions_map.get(b["id"], [])
                 for p in positions:
+                    p["entries_count"] = int(p.get("entries_count") or 1)
+                    p["dca_count"] = max(0, p["entries_count"] - 1)
                     all_open_positions.append({"bot": bot_info, "pos": p})
 
     # Filter side & search
@@ -491,7 +495,7 @@ async def get_positions_api(
 
     total = len(filtered)
     total_pages = max(1, (total + page_size - 1) // page_size) if total > 0 else 1
-    p = max(1, page)
+    p = min(max(1, page), total_pages)
     start_idx = (p - 1) * page_size
     end_idx = start_idx + page_size
     page_items = filtered[start_idx:end_idx]
@@ -1057,6 +1061,7 @@ def group_trades_into_positions(raw_trades):
                             "pct": pct_closed
                         })
                 
+                entries_cnt = max(1, len(entry_trades))
                 closed_cycles.append({
                     "order_id": t.get("order_id") or f"CYCLE_{cycle['open_timestamp']}",
                     "bot_id": bot_id,
@@ -1077,7 +1082,9 @@ def group_trades_into_positions(raw_trades):
                     "tps_hit": tps_hit,
                     "tps_total": tps_total,
                     "tp_targets": tp_targets,
-                    "leverage": leverage
+                    "leverage": leverage,
+                    "entries_count": entries_cnt,
+                    "dca_count": max(0, entries_cnt - 1)
                 })
                 
                 del active_cycles[key]
@@ -1111,6 +1118,7 @@ def _get_closed_positions_unified(bot_id=None, network_filter=None):
                     pass
                     
             ord_net = (ord_row.get("network") or ("testnet" if "SIM" in oid.upper() else "mainnet")).lower()
+            ord_entries = int(ord_row.get("entries_count") or 1)
             all_positions.append({
                 "order_id": oid,
                 "bot_id": ord_row["bot_id"],
@@ -1131,7 +1139,9 @@ def _get_closed_positions_unified(bot_id=None, network_filter=None):
                 "tps_hit": 1 if ord_row["status"] == "TP_HIT" else 0,
                 "tps_total": 1,
                 "tp_targets": tp_targets,
-                "leverage": 20
+                "leverage": 20,
+                "entries_count": ord_entries,
+                "dca_count": max(0, ord_entries - 1)
             })
             
     # 2. Fetch from trades table for legacy trades not already captured in orders
