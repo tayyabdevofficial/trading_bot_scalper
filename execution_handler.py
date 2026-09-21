@@ -264,12 +264,21 @@ class ExecutionHandler:
         if self.simulation_mode:
             logger.info(f"[SIMULATION] Set leverage for {symbol} to {leverage}x")
             return
+
+        state_key = f"leverage_{self.network}_{symbol.upper()}"
+        if self.db:
+            cached_lev = self.db.get_state(state_key)
+            if cached_lev == int(leverage):
+                logger.debug(f"Leverage for {symbol} is already set to {leverage}x. Skipping API request.")
+                return
             
         try:
             endpoint = "/fapi/v1/leverage"
             params = {"symbol": symbol.upper(), "leverage": int(leverage)}
             res = await self._send_request("POST", endpoint, params, action="SET_LEVERAGE")
             logger.info(f"Set leverage success: {res}")
+            if self.db:
+                self.db.set_state(state_key, int(leverage))
         except Exception as e:
             logger.error(f"Error setting leverage: {e}")
 
@@ -279,15 +288,30 @@ class ExecutionHandler:
         if self.simulation_mode:
             logger.info(f"[SIMULATION] Set margin type for {symbol} to {target_margin}")
             return
+
+        state_key = f"margin_type_{self.network}_{symbol.upper()}"
+        if self.db:
+            cached_margin = self.db.get_state(state_key)
+            if cached_margin == target_margin:
+                logger.debug(f"Margin type for {symbol} is already set to {target_margin}. Skipping API request.")
+                return
             
         try:
             endpoint = "/fapi/v1/marginType"
             params = {"symbol": symbol.upper(), "marginType": target_margin}
             res = await self._send_request("POST", endpoint, params, action="SET_MARGIN_TYPE")
             logger.info(f"Set margin type for {symbol} to {target_margin}: {res}")
+            if self.db:
+                self.db.set_state(state_key, target_margin)
             return res
         except Exception as e:
-            logger.error(f"Error setting margin type for {symbol}: {e}")
+            err_msg = str(e)
+            if "No need to change margin type" in err_msg or "-4046" in err_msg:
+                logger.info(f"Margin type for {symbol} is already {target_margin} on Binance. State cached.")
+                if self.db:
+                    self.db.set_state(state_key, target_margin)
+            else:
+                logger.error(f"Error setting margin type for {symbol}: {e}")
 
     async def get_balance(self) -> float:
         if self.simulation_mode:
