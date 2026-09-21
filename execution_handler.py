@@ -588,6 +588,19 @@ class ExecutionHandler:
                     
                 new_sl = round(new_sl, price_precision)
                 new_tp = avg_entry_price * (1 + bot_tp_pct/100) if side.upper() == "BUY" else avg_entry_price * (1 - bot_tp_pct/100)
+                
+                # 1. Cancel previous TP orders on Binance before updating to new targets
+                old_order_ids = [t.get("order_id") for t in existing_pos.get("tp_targets", []) if t.get("order_id")]
+                for oid in old_order_ids:
+                    try:
+                        await self._send_request("DELETE", "/fapi/v1/order", {"symbol": symbol.upper(), "orderId": int(oid)}, action="CANCEL_TP_LIMIT")
+                    except Exception:
+                        pass
+                try:
+                    await self._send_request("DELETE", "/fapi/v1/allOpenOrders", {"symbol": symbol.upper()}, action="CANCEL_ALL_OPEN_ORDERS")
+                except Exception:
+                    pass
+
                 existing_pos["entries_count"] = existing_pos.get("entries_count", 1) + 1
                 existing_pos["original_qty"] = round(total_qty, qty_precision)
                 existing_pos["qty"] = round(total_qty, qty_precision)
@@ -599,14 +612,6 @@ class ExecutionHandler:
                 existing_pos["order_id"] = order_id
                 existing_pos["status"] = "ACTIVE"
                 existing_pos["tp_targets"] = self.calculate_tp_targets(side, avg_entry_price, total_qty, bot_tp_pct, price_precision, qty_precision)
-                
-                # Cancel old TP orders
-                old_order_ids = [t.get("order_id") for t in existing_pos.get("tp_targets", []) if t.get("order_id")]
-                for oid in old_order_ids:
-                    try:
-                        await self._send_request("DELETE", "/fapi/v1/order", {"symbol": symbol.upper(), "orderId": int(oid)}, action="CANCEL_TP_LIMIT")
-                    except Exception:
-                        pass
             else:
                 initial_tp = entry_price * (1 + bot_tp_pct/100) if side.upper() == "BUY" else entry_price * (1 - bot_tp_pct/100)
                 new_pos["entry_price"] = entry_price
@@ -985,6 +990,13 @@ class ExecutionHandler:
 
             if target_pos in self.active_position:
                 self.active_position.remove(target_pos)
+
+            # Cancel any remaining open orders for this symbol on Binance
+            if not self.simulation_mode:
+                try:
+                    await self._send_request("DELETE", "/fapi/v1/allOpenOrders", {"symbol": symbol.upper()}, action="CANCEL_ALL_OPEN_ORDERS")
+                except Exception:
+                    pass
 
             # In-place update of exact order row in 'orders' table
             if self.db:
