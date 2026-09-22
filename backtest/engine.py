@@ -164,12 +164,14 @@ class BacktestEngine:
                     })
                     long_pos = None
                 elif long_pos is not None:
-                    # Check Max Loss Exit (Loss >= $100)
+                    # Check Max Loss Exit ($150 if DCA count > 5, otherwise $100)
                     avg_e = long_pos["avg_entry"]
                     qty = long_pos["qty"]
                     entries_cnt = long_pos["entries_count"]
+                    dca_cnt = max(0, entries_cnt - 1)
+                    max_loss_threshold = 150.0 if dca_cnt > 5 else 100.0
                     unrealized_pnl = (cur_low - avg_e) * qty
-                    if unrealized_pnl <= -100.0:
+                    if unrealized_pnl <= -max_loss_threshold:
                         exit_price = cur_low
                         pnl = unrealized_pnl
                         trades.append({
@@ -250,12 +252,14 @@ class BacktestEngine:
                     })
                     short_pos = None
                 elif short_pos is not None:
-                    # Check Max Loss Exit (Loss >= $100)
+                    # Check Max Loss Exit ($150 if DCA count > 5, otherwise $100)
                     avg_e = short_pos["avg_entry"]
                     qty = short_pos["qty"]
                     entries_cnt = short_pos["entries_count"]
+                    dca_cnt = max(0, entries_cnt - 1)
+                    max_loss_threshold = 150.0 if dca_cnt > 5 else 100.0
                     unrealized_pnl = (avg_e - cur_high) * qty
-                    if unrealized_pnl <= -100.0:
+                    if unrealized_pnl <= -max_loss_threshold:
                         exit_price = cur_high
                         pnl = unrealized_pnl
                         trades.append({
