@@ -741,20 +741,20 @@ class ExecutionHandler:
             entries_count = int(pos.get("entries_count") or 1)
             dca_count = max(0, entries_count - 1)
             
-            # 0. Check Max DCA Loss Stop-Loss (DCA entries >= 4 and Loss > $100 / <= -$100)
+            # 0. Check Max Loss Stop-Loss (Total Loss >= $100 / unrealized_pnl <= -$100.00)
             unrealized_pnl = (current_price - entry_price) * qty if side == "BUY" else (entry_price - current_price) * qty
-            if entries_count >= 4 and unrealized_pnl <= -100.0:
+            if unrealized_pnl <= -100.0:
                 logger.warning(
-                    f"Bot {self.bot_id} [{pos.get('symbol')}] MAX DCA LOSS STOP TRIGGERED: "
-                    f"Position has {entries_count}x entries ({dca_count}x DCA) and Loss is ${abs(unrealized_pnl):.2f} (<= -$100.00). Auto-closing position on Binance."
+                    f"Bot {self.bot_id} [{pos.get('symbol')}] MAX LOSS STOP TRIGGERED: "
+                    f"Position ({entries_count}x entries / {dca_count}x DCA) Loss is ${abs(unrealized_pnl):.2f} (<= -$100.00). Auto-closing position on Binance."
                 )
                 if self.db:
                     self.db.log_message(
                         "WARNING",
-                        f"[{pos.get('symbol')}] Max DCA Loss triggered: {entries_count}x entries ({dca_count}x DCA), Loss: ${unrealized_pnl:.2f}. Auto-closing position.",
+                        f"[{pos.get('symbol')}] Max Loss Stop triggered ({entries_count}x entries, Loss: ${unrealized_pnl:.2f}). Auto-closing position.",
                         bot_id=self.bot_id
                     )
-                await self.close_position(current_price, "MAX_DCA_LOSS_EXIT", unrealized_pnl, side, pos_to_close=pos)
+                await self.close_position(current_price, "MAX_LOSS_EXIT", unrealized_pnl, side, pos_to_close=pos)
                 continue
 
             # 1. Check Take Profit first (Matches BacktestEngine)

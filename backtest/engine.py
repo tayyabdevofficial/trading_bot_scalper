@@ -163,8 +163,8 @@ class BacktestEngine:
                         "text": f"TP Long: {('+$' if pnl >= 0 else '-$')}{abs(pnl):.2f}"
                     })
                     long_pos = None
-                elif long_pos["entries_count"] >= 4:
-                    # Check Max DCA Loss Exit (DCA >= 4 and Loss > $100)
+                elif long_pos is not None:
+                    # Check Max Loss Exit (Loss >= $100)
                     avg_e = long_pos["avg_entry"]
                     qty = long_pos["qty"]
                     entries_cnt = long_pos["entries_count"]
@@ -181,7 +181,7 @@ class BacktestEngine:
                             "qty": qty,
                             "pnl": pnl,
                             "entries_count": entries_cnt,
-                            "exit_reason": "MAX_DCA_LOSS_EXIT"
+                            "exit_reason": "MAX_LOSS_EXIT"
                         })
                         closed_long_trades += entries_cnt
                         trade_events.append({
@@ -194,14 +194,14 @@ class BacktestEngine:
                             "qty": round(qty, 6),
                             "pnl": round(pnl, 2),
                             "entries_closed": entries_cnt,
-                            "exit_reason": "MAX_DCA_LOSS_EXIT"
+                            "exit_reason": "MAX_LOSS_EXIT"
                         })
                         chart_markers.append({
                             "time": cur_unix,
                             "position": "aboveBar",
                             "color": "#ef4444",
                             "shape": "circle",
-                            "text": f"Max DCA SL Long: -${abs(pnl):.2f}"
+                            "text": f"Max SL Long: -${abs(pnl):.2f}"
                         })
                         long_pos = None
 
@@ -249,8 +249,8 @@ class BacktestEngine:
                         "text": f"TP Short: {('+$' if pnl >= 0 else '-$')}{abs(pnl):.2f}"
                     })
                     short_pos = None
-                elif short_pos["entries_count"] >= 4:
-                    # Check Max DCA Loss Exit (DCA >= 4 and Loss > $100)
+                elif short_pos is not None:
+                    # Check Max Loss Exit (Loss >= $100)
                     avg_e = short_pos["avg_entry"]
                     qty = short_pos["qty"]
                     entries_cnt = short_pos["entries_count"]
@@ -267,7 +267,7 @@ class BacktestEngine:
                             "qty": qty,
                             "pnl": pnl,
                             "entries_count": entries_cnt,
-                            "exit_reason": "MAX_DCA_LOSS_EXIT"
+                            "exit_reason": "MAX_LOSS_EXIT"
                         })
                         closed_short_trades += entries_cnt
                         trade_events.append({
@@ -280,14 +280,14 @@ class BacktestEngine:
                             "qty": round(qty, 6),
                             "pnl": round(pnl, 2),
                             "entries_closed": entries_cnt,
-                            "exit_reason": "MAX_DCA_LOSS_EXIT"
+                            "exit_reason": "MAX_LOSS_EXIT"
                         })
                         chart_markers.append({
                             "time": cur_unix,
                             "position": "belowBar",
                             "color": "#ef4444",
                             "shape": "circle",
-                            "text": f"Max DCA SL Short: -${abs(pnl):.2f}"
+                            "text": f"Max SL Short: -${abs(pnl):.2f}"
                         })
                         short_pos = None
 
