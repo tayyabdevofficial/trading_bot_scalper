@@ -113,6 +113,10 @@ class TradingBot:
                         pnl = (sync_price - pos["entry_price"]) * pos["qty"] if pos["side"] == "BUY" else (pos["entry_price"] - sync_price) * pos["qty"]
                         await self.execution.close_position(sync_price, "EXCHANGE_SYNC", pnl, pos["side"], pos_to_close=pos)
 
+            # Evaluate real-time exit conditions (TP / SL / Max DCA Loss) at current close price
+            if self.execution.active_position:
+                await self.execution.check_and_exit_positions(current_price)
+
             # Signal evaluation:
             # Long and Short positions run independently (matching BacktestEngine).
             # Repeated signals in the same direction execute DCA position averaging.

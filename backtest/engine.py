@@ -163,6 +163,47 @@ class BacktestEngine:
                         "text": f"TP Long: {('+$' if pnl >= 0 else '-$')}{abs(pnl):.2f}"
                     })
                     long_pos = None
+                elif long_pos["entries_count"] >= 4:
+                    # Check Max DCA Loss Exit (DCA >= 4 and Loss > $100)
+                    avg_e = long_pos["avg_entry"]
+                    qty = long_pos["qty"]
+                    entries_cnt = long_pos["entries_count"]
+                    unrealized_pnl = (cur_low - avg_e) * qty
+                    if unrealized_pnl <= -100.0:
+                        exit_price = cur_low
+                        pnl = unrealized_pnl
+                        trades.append({
+                            "entry_time": long_pos["entry_time"],
+                            "exit_time": cur_time,
+                            "side": "BUY",
+                            "entry_price": avg_e,
+                            "exit_price": exit_price,
+                            "qty": qty,
+                            "pnl": pnl,
+                            "entries_count": entries_cnt,
+                            "exit_reason": "MAX_DCA_LOSS_EXIT"
+                        })
+                        closed_long_trades += entries_cnt
+                        trade_events.append({
+                            "time": cur_unix,
+                            "time_str": cur_time,
+                            "type": "SL_LONG",
+                            "side": "BUY",
+                            "exit_price": round(exit_price, 6),
+                            "avg_entry": round(avg_e, 6),
+                            "qty": round(qty, 6),
+                            "pnl": round(pnl, 2),
+                            "entries_closed": entries_cnt,
+                            "exit_reason": "MAX_DCA_LOSS_EXIT"
+                        })
+                        chart_markers.append({
+                            "time": cur_unix,
+                            "position": "aboveBar",
+                            "color": "#ef4444",
+                            "shape": "circle",
+                            "text": f"Max DCA SL Long: -${abs(pnl):.2f}"
+                        })
+                        long_pos = None
 
             # 2. Check SHORT position TP exit
             if short_pos is not None:
@@ -208,6 +249,47 @@ class BacktestEngine:
                         "text": f"TP Short: {('+$' if pnl >= 0 else '-$')}{abs(pnl):.2f}"
                     })
                     short_pos = None
+                elif short_pos["entries_count"] >= 4:
+                    # Check Max DCA Loss Exit (DCA >= 4 and Loss > $100)
+                    avg_e = short_pos["avg_entry"]
+                    qty = short_pos["qty"]
+                    entries_cnt = short_pos["entries_count"]
+                    unrealized_pnl = (avg_e - cur_high) * qty
+                    if unrealized_pnl <= -100.0:
+                        exit_price = cur_high
+                        pnl = unrealized_pnl
+                        trades.append({
+                            "entry_time": short_pos["entry_time"],
+                            "exit_time": cur_time,
+                            "side": "SELL",
+                            "entry_price": avg_e,
+                            "exit_price": exit_price,
+                            "qty": qty,
+                            "pnl": pnl,
+                            "entries_count": entries_cnt,
+                            "exit_reason": "MAX_DCA_LOSS_EXIT"
+                        })
+                        closed_short_trades += entries_cnt
+                        trade_events.append({
+                            "time": cur_unix,
+                            "time_str": cur_time,
+                            "type": "SL_SHORT",
+                            "side": "SELL",
+                            "exit_price": round(exit_price, 6),
+                            "avg_entry": round(avg_e, 6),
+                            "qty": round(qty, 6),
+                            "pnl": round(pnl, 2),
+                            "entries_closed": entries_cnt,
+                            "exit_reason": "MAX_DCA_LOSS_EXIT"
+                        })
+                        chart_markers.append({
+                            "time": cur_unix,
+                            "position": "belowBar",
+                            "color": "#ef4444",
+                            "shape": "circle",
+                            "text": f"Max DCA SL Short: -${abs(pnl):.2f}"
+                        })
+                        short_pos = None
 
             # -------------------------------------------------------------
             # B. Process Signals (Candle Close) & Position Averaging (DCA)
