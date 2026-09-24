@@ -94,6 +94,31 @@ class Database:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_api_logs_network ON binance_api_logs(network)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_api_logs_symbol ON binance_api_logs(symbol)")
 
+            # Dedicated Signals Log Table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS signals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    network TEXT NOT NULL DEFAULT 'mainnet',
+                    bot_id INTEGER,
+                    symbol TEXT NOT NULL,
+                    strategy_name TEXT,
+                    signal TEXT NOT NULL,
+                    price REAL NOT NULL,
+                    signal_type TEXT NOT NULL,
+                    entries_count INTEGER DEFAULT 1,
+                    executed BOOLEAN DEFAULT 0,
+                    status TEXT NOT NULL,
+                    message TEXT,
+                    qty REAL DEFAULT 0.0
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_timestamp ON signals(timestamp)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_network ON signals(network)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_symbol ON signals(symbol)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_bot_id ON signals(bot_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_status ON signals(status)")
+
             # Trades table (transaction log)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS trades (
@@ -695,6 +720,141 @@ class Database:
         self.update_symbol_leverage(symbol, max_leverage)
 
     # --- LOGGING & METRICS ---
+    def log_signal(self, symbol, signal, price, signal_type, entries_count=1, executed=False, status="EXECUTED", message="", qty=0.0, bot_id=None, strategy_name=None, network="mainnet"):
+        """Logs a generated trading signal with its execution outcome."""
+        net = (network or "mainnet").lower()
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO signals (timestamp, network, bot_id, symbol, strategy_name, signal, price, signal_type, entries_count, executed, status, message, qty)
+                    VALUES (CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    net,
+                    bot_id,
+                    symbol.upper(),
+                    strategy_name or "",
+                    signal.upper(),
+                    float(price),
+                    signal_type,
+                    int(entries_count),
+                    1 if executed else 0,
+                    status,
+                    message or "",
+                    float(qty or 0.0)
+                ))
+                conn.commit()
+        except Exception as e:
+            print(f"Error logging signal to database: {e}")
+
+    def get_signals(self, bot_id=None, network=None, symbol=None, signal=None, executed=None, status=None, search=None, limit=50, offset=0):
+        """Fetches signal logs with optional filtering and pagination."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            query = "SELECT * FROM signals WHERE 1=1"
+            params = []
+
+            if network and network != "all":
+                query += " AND network = ?"
+                params.append(network.lower())
+            if bot_id is not None:
+                query += " AND bot_id = ?"
+                params.append(bot_id)
+            if symbol and symbol != "all":
+                query += " AND symbol = ?"
+                params.append(symbol.upper())
+            if signal and signal != "all":
+                query += " AND signal = ?"
+                params.append(signal.upper())
+            if executed is not None:
+                query += " AND executed = ?"
+                params.append(1 if executed else 0)
+            if status and status != "all":
+                query += " AND status = ?"
+                params.append(status)
+            if search and search.strip():
+                q = f"%{search.strip()}%"
+                query += " AND (symbol LIKE ? OR strategy_name LIKE ? OR status LIKE ? OR message LIKE ?)"
+                params.extend([q, q, q, q])
+
+            query += " ORDER BY timestamp DESC, id DESC LIMIT ? OFFSET ?"
+            params.extend([limit, offset])
+
+            cursor.execute(query, params)
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_signals_count(self, bot_id=None, network=None, symbol=None, signal=None, executed=None, status=None, search=None):
+        """Fetches total count of signal logs matching filters."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            query = "SELECT COUNT(*) as cnt FROM signals WHERE 1=1"
+            params = []
+
+            if network and network != "all":
+                query += " AND network = ?"
+                params.append(network.lower())
+            if bot_id is not None:
+                query += " AND bot_id = ?"
+                params.append(bot_id)
+            if symbol and symbol != "all":
+                query += " AND symbol = ?"
+                params.append(symbol.upper())
+            if signal and signal != "all":
+                query += " AND signal = ?"
+                params.append(signal.upper())
+            if executed is not None:
+                query += " AND executed = ?"
+                params.append(1 if executed else 0)
+            if status and status != "all":
+                query += " AND status = ?"
+                params.append(status)
+            if search and search.strip():
+                q = f"%{search.strip()}%"
+                query += " AND (symbol LIKE ? OR strategy_name LIKE ? OR status LIKE ? OR message LIKE ?)"
+                params.extend([q, q, q, q])
+
+            cursor.execute(query, params)
+            row = cursor.fetchone()
+            return row["cnt"] if row else 0
+
+    def get_signals_summary(self, network=None, bot_id=None):
+        """Fetches aggregated stats for signals."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            query = """
+                SELECT 
+                    COUNT(*) as total_signals,
+                    COUNT(CASE WHEN executed = 1 THEN 1 END) as executed_count,
+                    COUNT(CASE WHEN executed = 0 THEN 1 END) as blocked_count,
+                    COUNT(CASE WHEN signal_type LIKE 'DCA%' THEN 1 END) as dca_count,
+                    COUNT(CASE WHEN signal_type = 'ENTRY' THEN 1 END) as entry_count,
+                    COUNT(CASE WHEN signal = 'LONG' OR signal = 'BUY' THEN 1 END) as long_count,
+                    COUNT(CASE WHEN signal = 'SHORT' OR signal = 'SELL' THEN 1 END) as short_count
+                FROM signals
+                WHERE 1=1
+            """
+            params = []
+            if network and network != "all":
+                query += " AND network = ?"
+                params.append(network.lower())
+            if bot_id is not None:
+                query += " AND bot_id = ?"
+                params.append(bot_id)
+
+            cursor.execute(query, params)
+            row = cursor.fetchone()
+            if row:
+                return dict(row)
+            return {
+                "total_signals": 0,
+                "executed_count": 0,
+                "blocked_count": 0,
+                "dca_count": 0,
+                "entry_count": 0,
+                "long_count": 0,
+                "short_count": 0
+            }
+
     def log_trade(self, symbol, side, order_type, price, qty, realized_pnl=0.0, order_id=None, bot_id=None, network="mainnet"):
         net = (network or "mainnet").lower()
         with self.get_connection() as conn:
@@ -1047,6 +1207,7 @@ class Database:
                 "orders",
                 "trades",
                 "binance_api_logs",
+                "signals",
                 "daily_pnl",
                 "hourly_pnl",
                 "system_logs"

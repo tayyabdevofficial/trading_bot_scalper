@@ -211,6 +211,14 @@ async def get_closed_positions_page(request: Request):
         return RedirectResponse(url="/login")
     return serve_page("closed_positions.html", is_admin=True)
 
+@app.get("/signals", response_class=HTMLResponse)
+async def get_signals_page(request: Request):
+    try:
+        await check_admin_auth(request, db=db)
+    except HTTPException:
+        return RedirectResponse(url="/login")
+    return serve_page("signals.html", is_admin=True)
+
 @app.get("/binance-logs", response_class=HTMLResponse)
 async def get_binance_logs_page(request: Request):
     try:
@@ -1649,6 +1657,56 @@ async def get_binance_logs_raw(request: Request, lines: int = 150):
             return {"lines": [line.rstrip("\r\n") for line in all_lines[-lines:]]}
     except Exception as e:
         return {"lines": [f"Error reading log file: {str(e)}"]}
+
+@app.get("/api/signals")
+async def get_signals_api(
+    request: Request = None,
+    bot_id: Optional[int] = None,
+    network: Optional[str] = None,
+    symbol: Optional[str] = None,
+    signal: Optional[str] = None,
+    status: Optional[str] = None,
+    executed: Optional[str] = None,
+    search: Optional[str] = None,
+    page: Optional[int] = 1,
+    page_size: int = 50,
+    all_items: bool = False
+):
+    exec_bool = None
+    if executed is not None and executed != "all":
+        if str(executed).lower() in ("true", "1", "executed"):
+            exec_bool = True
+        elif str(executed).lower() in ("false", "0", "blocked"):
+            exec_bool = False
+
+    net = None if network in ("all", None, "") else network.lower()
+    sym = None if symbol in ("all", None, "") else symbol.strip().upper()
+    sig = None if signal in ("all", None, "") else signal.strip().upper()
+    st = None if status in ("all", None, "") else status.strip()
+    q = search.strip() if search and search.strip() else None
+
+    p = max(1, page or 1)
+    limit = max(1, min(page_size, 500))
+    offset = (p - 1) * limit
+
+    if all_items:
+        items = db.get_signals(bot_id=bot_id, network=net, symbol=sym, signal=sig, executed=exec_bool, status=st, search=q, limit=1000, offset=0)
+        total = len(items)
+    else:
+        items = db.get_signals(bot_id=bot_id, network=net, symbol=sym, signal=sig, executed=exec_bool, status=st, search=q, limit=limit, offset=offset)
+        total = db.get_signals_count(bot_id=bot_id, network=net, symbol=sym, signal=sig, executed=exec_bool, status=st, search=q)
+
+    total_pages = max(1, (total + limit - 1) // limit) if total > 0 else 1
+    stats = db.get_signals_summary(network=net, bot_id=bot_id)
+
+    return {
+        "items": items,
+        "total": total,
+        "page": p,
+        "page_size": limit,
+        "total_pages": total_pages,
+        "stats": stats
+    }
 
 @app.get("/api/pnl")
 async def get_pnl_api(request: Request, period: str = "30d", network: Optional[str] = None):

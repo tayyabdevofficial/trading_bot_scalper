@@ -123,13 +123,53 @@ class TradingBot:
             can_enter = (signal in ("BUY", "SELL"))
 
             if can_enter and signal != "HOLD":
+                signal_name = "LONG" if signal == "BUY" else "SHORT"
+                
+                # Check if there is an active position for this direction to see the current entries count
+                current_entries_count = 0
+                for pos in (self.execution.active_position or []):
+                    if pos.get("side", "").upper() == signal.upper():
+                        current_entries_count = int(pos.get("entries_count") or 1)
+                        break
+
+                signal_type = "ENTRY" if current_entries_count == 0 else f"DCA #{current_entries_count + 1}"
+                target_entries_count = current_entries_count + 1
+
                 # 2. Chop Market regime filter check
                 if self.parameters.get("use_chop_filter", False):
                     if self.strategy_type == "TREND" and chop_val > 60:
-                        self.db.log_message("WARNING", f"[{self.symbol}] BUY/SELL signal BLOCKED by Choppiness Filter (CHOP={chop_val:.1f} > 60)", bot_id=self.bot_id)
+                        msg = f"BUY/SELL signal BLOCKED by Choppiness Filter (CHOP={chop_val:.1f} > 60)"
+                        self.db.log_message("WARNING", f"[{self.symbol}] {msg}", bot_id=self.bot_id)
+                        self.db.log_signal(
+                            symbol=self.symbol,
+                            signal=signal_name,
+                            price=current_price,
+                            signal_type=signal_type,
+                            entries_count=target_entries_count,
+                            executed=False,
+                            status="BLOCKED_CHOP_FILTER",
+                            message=msg,
+                            bot_id=self.bot_id,
+                            strategy_name=self.strategy_name,
+                            network=self.network
+                        )
                         return
                     if self.strategy_type == "REVERSION" and chop_val < 40:
-                        self.db.log_message("WARNING", f"[{self.symbol}] BUY/SELL signal BLOCKED by Choppiness Filter (CHOP={chop_val:.1f} < 40)", bot_id=self.bot_id)
+                        msg = f"BUY/SELL signal BLOCKED by Choppiness Filter (CHOP={chop_val:.1f} < 40)"
+                        self.db.log_message("WARNING", f"[{self.symbol}] {msg}", bot_id=self.bot_id)
+                        self.db.log_signal(
+                            symbol=self.symbol,
+                            signal=signal_name,
+                            price=current_price,
+                            signal_type=signal_type,
+                            entries_count=target_entries_count,
+                            executed=False,
+                            status="BLOCKED_CHOP_FILTER",
+                            message=msg,
+                            bot_id=self.bot_id,
+                            strategy_name=self.strategy_name,
+                            network=self.network
+                        )
                         return
 
                 # 3. Multi-Timeframe Trend filter check (1h 50 EMA)
@@ -145,20 +185,41 @@ class TradingBot:
                         is_htf_uptrend = latest_htf_price > latest_htf_ema50
                         
                         if signal == "BUY" and not is_htf_uptrend:
-                            self.db.log_message("WARNING", f"[{self.symbol}] BUY signal BLOCKED by MTF filter ({htf} price {latest_htf_price} is below 50 EMA {latest_htf_ema50:.2f})", bot_id=self.bot_id)
+                            msg = f"BUY signal BLOCKED by MTF filter ({htf} price {latest_htf_price:.4f} is below 50 EMA {latest_htf_ema50:.4f})"
+                            self.db.log_message("WARNING", f"[{self.symbol}] {msg}", bot_id=self.bot_id)
+                            self.db.log_signal(
+                                symbol=self.symbol,
+                                signal=signal_name,
+                                price=current_price,
+                                signal_type=signal_type,
+                                entries_count=target_entries_count,
+                                executed=False,
+                                status="BLOCKED_MTF_FILTER",
+                                message=msg,
+                                bot_id=self.bot_id,
+                                strategy_name=self.strategy_name,
+                                network=self.network
+                            )
                             return
                         if signal == "SELL" and is_htf_uptrend:
-                            self.db.log_message("WARNING", f"[{self.symbol}] SELL signal BLOCKED by MTF filter ({htf} price {latest_htf_price} is above 50 EMA {latest_htf_ema50:.2f})", bot_id=self.bot_id)
+                            msg = f"SELL signal BLOCKED by MTF filter ({htf} price {latest_htf_price:.4f} is above 50 EMA {latest_htf_ema50:.4f})"
+                            self.db.log_message("WARNING", f"[{self.symbol}] {msg}", bot_id=self.bot_id)
+                            self.db.log_signal(
+                                symbol=self.symbol,
+                                signal=signal_name,
+                                price=current_price,
+                                signal_type=signal_type,
+                                entries_count=target_entries_count,
+                                executed=False,
+                                status="BLOCKED_MTF_FILTER",
+                                message=msg,
+                                bot_id=self.bot_id,
+                                strategy_name=self.strategy_name,
+                                network=self.network
+                            )
                             return
 
                 balance = await self.execution.get_available_balance()
-
-                # Check if there is an active position for this direction to see the current entries count
-                current_entries_count = 0
-                for pos in (self.execution.active_position or []):
-                    if pos.get("side", "").upper() == signal.upper():
-                        current_entries_count = int(pos.get("entries_count") or 1)
-                        break
 
                 # If total entries count including DCA are >= 5, next DCA trade amount is 50% of trade amount
                 size_multiplier = 0.5 if current_entries_count >= 5 else 1.0
@@ -169,6 +230,25 @@ class TradingBot:
                     if size_multiplier < 1.0:
                         logger.info(f"[{self.network.upper()} {self.symbol}] DCA entries >= 5 ({current_entries_count}x). Reduced trade amount by 50% -> Qty: {qty}")
                     logger.info(f"[{self.network.upper()} {self.symbol}] Scalp Entry: {signal} Qty: {qty}. SL: {sl_price}, TP: {tp_price}")
+                    
+                    exec_status = "EXECUTED" if not self.execution.simulation_mode else "SIMULATED"
+                    exec_msg = f"Order executed on Binance for {qty} units @ {current_price} ({signal_type})" if not self.execution.simulation_mode else f"Simulated order placed for {qty} units @ {current_price} ({signal_type})"
+                    
+                    self.db.log_signal(
+                        symbol=self.symbol,
+                        signal=signal_name,
+                        price=current_price,
+                        signal_type=signal_type,
+                        entries_count=target_entries_count,
+                        executed=True,
+                        status=exec_status,
+                        message=exec_msg,
+                        qty=qty,
+                        bot_id=self.bot_id,
+                        strategy_name=self.strategy_name,
+                        network=self.network
+                    )
+                    
                     await self.execution.execute_order(
                         symbol=self.symbol,
                         side=signal,
@@ -176,6 +256,22 @@ class TradingBot:
                         price=current_price,
                         sl_price=sl_price,
                         tp_price=tp_price
+                    )
+                else:
+                    msg = f"Order not executed: calculated quantity was 0.0 (Balance: ${balance:.2f})"
+                    self.db.log_signal(
+                        symbol=self.symbol,
+                        signal=signal_name,
+                        price=current_price,
+                        signal_type=signal_type,
+                        entries_count=target_entries_count,
+                        executed=False,
+                        status="INSUFFICIENT_BALANCE",
+                        message=msg,
+                        qty=0.0,
+                        bot_id=self.bot_id,
+                        strategy_name=self.strategy_name,
+                        network=self.network
                     )
         except Exception as e:
             logger.error(f"Error in bot {self.bot_id} on_candle_close: {e}", exc_info=True)

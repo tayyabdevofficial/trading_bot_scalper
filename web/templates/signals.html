@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Signals Log - Tayyab Scalper</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-grad-start: #0b0f19;
+            --bg-grad-end: #030712;
+            --glass-bg: rgba(17, 24, 39, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --accent-blue: #38bdf8;
+            --accent-purple: #a855f7;
+            --accent-green: #10b981;
+            --accent-red: #f43f5e;
+            --accent-yellow: #f59e0b;
+            --accent-indigo: #6366f1;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, var(--bg-grad-start), var(--bg-grad-end));
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 0 0.5rem;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.16);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .stat-val {
+            font-size: 1.6rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1.2;
+        }
+
+        .stat-lbl {
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-top: 0.2rem;
+        }
+
+        /* Filter Controls */
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .filter-group label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .form-control {
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 0.6rem 0.85rem;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+        }
+
+        select.form-control option {
+            background: #0f172a;
+            color: #f8fafc;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .btn-action {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(168, 85, 247, 0.2));
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text-main);
+            padding: 0.6rem 1.1rem;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .btn-action:hover {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.35), rgba(168, 85, 247, 0.35));
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .btn-action.active-pulse {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.35));
+            border-color: rgba(16, 185, 129, 0.4);
+            color: #6ee7b7;
+        }
+
+        /* Table Styling */
+        .table-responsive {
+            overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.88rem;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.85);
+            padding: 0.85rem 1rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--glass-border);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            vertical-align: middle;
+        }
+
+        tr.signal-row:hover {
+            background: rgba(255, 255, 255, 0.025);
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.28rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .badge-mainnet {
+            background: rgba(168, 85, 247, 0.15);
+            color: #d8b4fe;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+        }
+
+        .badge-testnet {
+            background: rgba(56, 189, 248, 0.15);
+            color: #7dd3fc;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        .badge-long {
+            background: rgba(16, 185, 129, 0.18);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+
+        .badge-short {
+            background: rgba(244, 63, 94, 0.18);
+            color: #fb7185;
+            border: 1px solid rgba(244, 63, 94, 0.35);
+        }
+
+        .badge-entry {
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        .badge-dca {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .badge-executed {
+            background: rgba(16, 185, 129, 0.2);
+            color: #6ee7b7;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+
+        .badge-simulated {
+            background: rgba(99, 102, 241, 0.2);
+            color: #a5b4fc;
+            border: 1px solid rgba(99, 102, 241, 0.4);
+        }
+
+        .badge-blocked-chop {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fde68a;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+
+        .badge-blocked-mtf {
+            background: rgba(168, 85, 247, 0.2);
+            color: #e9d5ff;
+            border: 1px solid rgba(168, 85, 247, 0.4);
+        }
+
+        .badge-insufficient {
+            background: rgba(244, 63, 94, 0.2);
+            color: #fecdd3;
+            border: 1px solid rgba(244, 63, 94, 0.4);
+        }
+
+        /* Message Box */
+        .msg-text {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            max-width: 320px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+        }
+
+        .msg-text:hover {
+            color: var(--text-main);
+            white-space: normal;
+        }
+
+        /* Pagination Bar */
+        .pagination-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.2rem;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .page-info {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .page-controls {
+            display: flex;
+            gap: 0.4rem;
+            align-items: center;
+        }
+
+        .page-btn {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            border-color: var(--accent-blue);
+            background: rgba(56, 189, 248, 0.15);
+        }
+
+        .page-btn.active {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: #fff;
+            border-color: transparent;
+            font-weight: 700;
+        }
+
+        .page-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER_PLACEHOLDER -->
+
+        <!-- Stats Overview Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(56, 189, 248, 0.15); color: var(--accent-blue);">
+                    <i data-lucide="radio" style="width: 24px; height: 24px;"></i>
+                </div>
+                <div>
+                    <div class="stat-val" id="statTotalSignals">0</div>
+                    <div class="stat-lbl">Total Signals Logged</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--accent-green);">
+                    <i data-lucide="check-circle" style="width: 24px; height: 24px;"></i>
+                </div>
+                <div>
+                    <div class="stat-val" id="statExecuted" style="color: var(--accent-green);">0</div>
+                    <div class="stat-lbl">Executed on Binance</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--accent-yellow);">
+                    <i data-lucide="shield-alert" style="width: 24px; height: 24px;"></i>
+                </div>
+                <div>
+                    <div class="stat-val" id="statBlocked" style="color: var(--accent-yellow);">0</div>
+                    <div class="stat-lbl">Filtered / Blocked</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(168, 85, 247, 0.15); color: var(--accent-purple);">
+                    <i data-lucide="layers" style="width: 24px; height: 24px;"></i>
+                </div>
+                <div>
+                    <div class="stat-val" id="statDCA" style="color: #c084fc;">0</div>
+                    <div class="stat-lbl">DCA Averaging Signals</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter and Action Toolbar -->
+        <div class="glass-card">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Network</label>
+                    <select id="filterNetwork" class="form-control" onchange="applyFilters()">
+                        <option value="all">All Networks</option>
+                        <option value="mainnet">Mainnet</option>
+                        <option value="testnet">Testnet</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Direction</label>
+                    <select id="filterSignal" class="form-control" onchange="applyFilters()">
+                        <option value="all">All Directions</option>
+                        <option value="LONG">LONG (BUY)</option>
+                        <option value="SHORT">SHORT (SELL)</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Execution Status</label>
+                    <select id="filterStatus" class="form-control" onchange="applyFilters()">
+                        <option value="all">All Statuses</option>
+                        <option value="EXECUTED">Executed (Live Binance)</option>
+                        <option value="SIMULATED">Simulated (Paper Trade)</option>
+                        <option value="BLOCKED_CHOP_FILTER">Blocked (Chop Filter)</option>
+                        <option value="BLOCKED_MTF_FILTER">Blocked (MTF 50 EMA)</option>
+                        <option value="INSUFFICIENT_BALANCE">Insufficient Balance</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Symbol</label>
+                    <input type="text" id="filterSymbol" class="form-control" placeholder="e.g. BTCUSDT" onkeydown="if(event.key==='Enter') applyFilters()">
+                </div>
+
+                <div class="filter-group">
+                    <label>Search Details</label>
+                    <input type="text" id="filterSearch" class="form-control" placeholder="Strategy, bot ID, reason..." onkeydown="if(event.key==='Enter') applyFilters()">
+                </div>
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn-action" onclick="applyFilters()">
+                    <i data-lucide="filter"></i> Apply Filters
+                </button>
+                <button class="btn-action" onclick="resetFilters()">
+                    <i data-lucide="rotate-ccw"></i> Reset
+                </button>
+                <button id="btnAutoRefresh" class="btn-action active-pulse" onclick="toggleAutoRefresh()">
+                    <i data-lucide="radio"></i> Live Stream: ON
+                </button>
+            </div>
+        </div>
+
+        <!-- Signals Table Card -->
+        <div class="glass-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem;">
+                <h2 style="font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="activity" style="color: var(--accent-blue);"></i> Real-Time Signals Feed
+                </h2>
+                <div style="font-size: 0.85rem; color: var(--text-muted);" id="tableCountDisplay">
+                    Showing 0 signals
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Network</th>
+                            <th>Bot ID</th>
+                            <th>Symbol</th>
+                            <th>Strategy</th>
+                            <th>Signal</th>
+                            <th>Entry / DCA</th>
+                            <th>Signal Price</th>
+                            <th>Order Qty</th>
+                            <th>Execution on Binance</th>
+                            <th>Reason / Message</th>
+                        </tr>
+                    </thead>
+                    <tbody id="signalsTableBody">
+                        <tr>
+                            <td colspan="11" class="empty-state">Loading trading signals...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination Controls -->
+            <div class="pagination-bar">
+                <div class="page-info" id="pageInfo">Page 1 of 1</div>
+                <div class="page-controls" id="pageControls">
+                    <button class="page-btn" id="btnPrevPage" onclick="changePage(currentPage - 1)" disabled>
+                        <i data-lucide="chevron-left" style="width: 14px; height: 14px;"></i> Prev
+                    </button>
+                    <div id="pageNumbers" style="display: flex; gap: 0.3rem;"></div>
+                    <button class="page-btn" id="btnNextPage" onclick="changePage(currentPage + 1)" disabled>
+                        Next <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let pageSize = 50;
+        let totalPages = 1;
+        let autoRefreshInterval = null;
+        let isAutoRefreshActive = true;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Highlight nav button
+            const navBtn = document.getElementById('nav-signals');
+            if (navBtn) navBtn.classList.add('active');
+
+            fetchSignals();
+            startAutoRefresh();
+        });
+
+        async function fetchSignals() {
+            try {
+                const network = document.getElementById('filterNetwork').value;
+                const signal = document.getElementById('filterSignal').value;
+                const status = document.getElementById('filterStatus').value;
+                const symbol = document.getElementById('filterSymbol').value.trim();
+                const search = document.getElementById('filterSearch').value.trim();
+
+                const params = new URLSearchParams();
+                if (network !== 'all') params.append('network', network);
+                if (signal !== 'all') params.append('signal', signal);
+                if (status !== 'all') params.append('status', status);
+                if (symbol) params.append('symbol', symbol);
+                if (search) params.append('search', search);
+                params.append('page', currentPage);
+                params.append('page_size', pageSize);
+
+                const resp = await fetch(`/api/signals?${params.toString()}`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    renderSignals(data.items || []);
+                    updateStats(data.stats || {});
+                    updatePagination(data.total || 0, data.page || 1, data.total_pages || 1);
+                }
+            } catch (err) {
+                console.error("Error fetching signals log:", err);
+            }
+        }
+
+        function updateStats(stats) {
+            document.getElementById('statTotalSignals').innerText = stats.total_signals ?? 0;
+            document.getElementById('statExecuted').innerText = stats.executed_count ?? 0;
+            document.getElementById('statBlocked').innerText = stats.blocked_count ?? 0;
+            document.getElementById('statDCA').innerText = stats.dca_count ?? 0;
+        }
+
+        function renderSignals(signals) {
+            const tbody = document.getElementById('signalsTableBody');
+            if (!signals || signals.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="11" class="empty-state">No trading signals recorded yet matching filters.</td></tr>`;
+                document.getElementById('tableCountDisplay').innerText = `Showing 0 signals`;
+                return;
+            }
+
+            document.getElementById('tableCountDisplay').innerText = `Showing ${signals.length} signals`;
+
+            let html = '';
+            signals.forEach(sig => {
+                const isNetTest = (sig.network || '').toLowerCase() === 'testnet';
+                const netBadge = isNetTest
+                    ? `<span class="badge badge-testnet"><i data-lucide="flask-conical" style="width:11px;height:11px;"></i> TESTNET</span>`
+                    : `<span class="badge badge-mainnet"><i data-lucide="shield-check" style="width:11px;height:11px;"></i> MAINNET</span>`;
+
+                const isLong = (sig.signal || '').toUpperCase() === 'LONG' || (sig.signal || '').toUpperCase() === 'BUY';
+                const signalBadge = isLong
+                    ? `<span class="badge badge-long"><i data-lucide="trending-up" style="width:12px;height:12px;"></i> LONG</span>`
+                    : `<span class="badge badge-short"><i data-lucide="trending-down" style="width:12px;height:12px;"></i> SHORT</span>`;
+
+                const isDca = (sig.signal_type || '').toUpperCase().includes('DCA');
+                const typeBadge = isDca
+                    ? `<span class="badge badge-dca"><i data-lucide="layers" style="width:11px;height:11px;"></i> ${sig.signal_type} (${sig.entries_count}x)</span>`
+                    : `<span class="badge badge-entry"><i data-lucide="play" style="width:11px;height:11px;"></i> ENTRY #1</span>`;
+
+                // Status on Binance execution badge
+                let statusBadge = '';
+                const st = sig.status || '';
+                if (st === 'EXECUTED') {
+                    statusBadge = `<span class="badge badge-executed"><i data-lucide="check" style="width:11px;height:11px;"></i> LIVE EXECUTED</span>`;
+                } else if (st === 'SIMULATED') {
+                    statusBadge = `<span class="badge badge-simulated"><i data-lucide="terminal" style="width:11px;height:11px;"></i> SIMULATED</span>`;
+                } else if (st === 'BLOCKED_CHOP_FILTER') {
+                    statusBadge = `<span class="badge badge-blocked-chop"><i data-lucide="shield-alert" style="width:11px;height:11px;"></i> BLOCKED (CHOP)</span>`;
+                } else if (st === 'BLOCKED_MTF_FILTER') {
+                    statusBadge = `<span class="badge badge-blocked-mtf"><i data-lucide="git-branch" style="width:11px;height:11px;"></i> BLOCKED (MTF EMA)</span>`;
+                } else if (st === 'INSUFFICIENT_BALANCE') {
+                    statusBadge = `<span class="badge badge-insufficient"><i data-lucide="alert-circle" style="width:11px;height:11px;"></i> NO BALANCE</span>`;
+                } else {
+                    statusBadge = `<span class="badge badge-blocked-chop">${st}</span>`;
+                }
+
+                const priceStr = sig.price ? `$${Number(sig.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 6})}` : '—';
+                const qtyStr = sig.qty && Number(sig.qty) > 0 ? Number(sig.qty).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 6}) : '—';
+
+                html += `
+                    <tr class="signal-row">
+                        <td class="mono" style="font-size:0.8rem; color:var(--text-muted); white-space:nowrap;">${sig.timestamp || '—'}</td>
+                        <td>${netBadge}</td>
+                        <td class="mono" style="font-weight:700;">${sig.bot_id ? `#${sig.bot_id}` : '—'}</td>
+                        <td class="mono" style="font-weight:700; color:var(--accent-blue);">${sig.symbol || '—'}</td>
+                        <td style="color:var(--text-muted); font-size:0.82rem;">${sig.strategy_name || '—'}</td>
+                        <td>${signalBadge}</td>
+                        <td>${typeBadge}</td>
+                        <td class="mono" style="font-weight:700;">${priceStr}</td>
+                        <td class="mono" style="color:#cbd5e1;">${qtyStr}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <div class="msg-text" title="${escapeHtml(sig.message || '')}">
+                                ${escapeHtml(sig.message || '—')}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function updatePagination(total, page, pages) {
+            currentPage = page;
+            totalPages = pages;
+
+            document.getElementById('pageInfo').innerText = `Page ${page} of ${pages} (${total} total records)`;
+            document.getElementById('btnPrevPage').disabled = (page <= 1);
+            document.getElementById('btnNextPage').disabled = (page >= pages);
+
+            const numContainer = document.getElementById('pageNumbers');
+            let btnsHtml = '';
+            const maxVisible = 5;
+            let start = Math.max(1, page - 2);
+            let end = Math.min(pages, start + maxVisible - 1);
+            if (end - start < maxVisible - 1) {
+                start = Math.max(1, end - maxVisible + 1);
+            }
+
+            for (let i = start; i <= end; i++) {
+                btnsHtml += `<button class="page-btn ${i === page ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+            }
+            numContainer.innerHTML = btnsHtml;
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function changePage(newPage) {
+            if (newPage < 1 || newPage > totalPages) return;
+            currentPage = newPage;
+            fetchSignals();
+        }
+
+        function applyFilters() {
+            currentPage = 1;
+            fetchSignals();
+        }
+
+        function resetFilters() {
+            document.getElementById('filterNetwork').value = 'all';
+            document.getElementById('filterSignal').value = 'all';
+            document.getElementById('filterStatus').value = 'all';
+            document.getElementById('filterSymbol').value = '';
+            document.getElementById('filterSearch').value = '';
+            currentPage = 1;
+            fetchSignals();
+        }
+
+        function toggleAutoRefresh() {
+            const btn = document.getElementById('btnAutoRefresh');
+            if (isAutoRefreshActive) {
+                clearInterval(autoRefreshInterval);
+                isAutoRefreshActive = false;
+                btn.className = 'btn-action';
+                btn.innerHTML = `<i data-lucide="play"></i> Live Stream: PAUSED`;
+            } else {
+                startAutoRefresh();
+                btn.className = 'btn-action active-pulse';
+                btn.innerHTML = `<i data-lucide="radio"></i> Live Stream: ON`;
+            }
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function startAutoRefresh() {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = setInterval(fetchSignals, 3000);
+            isAutoRefreshActive = true;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>
