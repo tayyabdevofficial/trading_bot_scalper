@@ -10,21 +10,22 @@ class RiskManager:
         self.leverage = int(leverage)
         self.trade_amount_usd = float(trade_amount_usd) if trade_amount_usd is not None else None
 
-    def calculate_position_size(self, balance: float, entry_price: float) -> float:
+    def calculate_position_size(self, balance: float, entry_price: float, size_multiplier: float = 1.0) -> float:
         """
         Calculates position quantity to buy/sell based on risk settings or direct USD size.
-        If trade_amount_usd is set, Position Value = trade_amount_usd * leverage.
-        Otherwise: Position Size = (Balance * Risk%) / StopLoss%
+        If trade_amount_usd is set, Position Value = (trade_amount_usd * size_multiplier) * leverage.
+        Otherwise: Position Size = (Balance * Risk% * size_multiplier) / StopLoss%
         """
         if balance <= 0:
             logger.warning("Account balance is zero or negative. Cannot size position.")
             return 0.0
             
+        multiplier = max(0.01, float(size_multiplier))
         if self.trade_amount_usd is not None and self.trade_amount_usd > 0:
-            usd_to_use = min(self.trade_amount_usd, balance)
+            usd_to_use = min(self.trade_amount_usd * multiplier, balance)
             position_value = usd_to_use * self.leverage
         else:
-            risk_amount = balance * (self.risk_percent / 100.0)
+            risk_amount = balance * (self.risk_percent / 100.0) * multiplier
             stop_loss_decimal = self.stop_loss_pct / 100.0
             position_value = risk_amount / stop_loss_decimal
         
