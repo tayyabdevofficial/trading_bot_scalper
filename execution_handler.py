@@ -741,8 +741,20 @@ class ExecutionHandler:
             entries_count = int(pos.get("entries_count") or 1)
             dca_count = max(0, entries_count - 1)
             
-            # 0. Check Max Loss Stop-Loss (Max Loss = $150 if DCA count > 5, otherwise $100)
-            max_loss_threshold = 150.0 if (dca_count > 5 or entries_count > 6) else 100.0
+            # 0. Check Max Loss Stop-Loss:
+            # - Total entries >= 10: $250 max loss
+            # - Total entries >= 7: $200 max loss
+            # - Total entries > 5 (or DCA count > 5): $150 max loss
+            # - Otherwise: $100 max loss
+            if entries_count >= 10:
+                max_loss_threshold = 250.0
+            elif entries_count >= 7:
+                max_loss_threshold = 200.0
+            elif dca_count > 5 or entries_count > 5:
+                max_loss_threshold = 150.0
+            else:
+                max_loss_threshold = 100.0
+
             unrealized_pnl = (current_price - entry_price) * qty if side == "BUY" else (entry_price - current_price) * qty
             if unrealized_pnl <= -max_loss_threshold:
                 logger.warning(
