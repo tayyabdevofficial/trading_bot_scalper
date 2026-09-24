@@ -221,14 +221,14 @@ class TradingBot:
 
                 balance = await self.execution.get_available_balance()
 
-                # If total entries count including DCA are >= 5, next DCA trade amount is 50% of trade amount
-                size_multiplier = 0.5 if current_entries_count >= 5 else 1.0
+                # If total entries count including DCA are >= 3, next DCA trade amount is 50% of trade amount
+                size_multiplier = 0.5 if current_entries_count >= 3 else 1.0
                 qty = self.risk_manager.calculate_position_size(balance, current_price, size_multiplier=size_multiplier)
                 
                 if qty > 0:
                     sl_price, tp_price = self.risk_manager.get_sl_tp_prices(signal, current_price)
                     if size_multiplier < 1.0:
-                        logger.info(f"[{self.network.upper()} {self.symbol}] DCA entries >= 5 ({current_entries_count}x). Reduced trade amount by 50% -> Qty: {qty}")
+                        logger.info(f"[{self.network.upper()} {self.symbol}] DCA entries >= 3 ({current_entries_count}x). Reduced trade amount by 50% -> Qty: {qty}")
                     logger.info(f"[{self.network.upper()} {self.symbol}] Scalp Entry: {signal} Qty: {qty}. SL: {sl_price}, TP: {tp_price}")
                     
                     exec_status = "EXECUTED" if not self.execution.simulation_mode else "SIMULATED"

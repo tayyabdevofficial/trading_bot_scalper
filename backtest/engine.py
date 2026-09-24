@@ -327,7 +327,7 @@ class BacktestEngine:
 
                 if pass_chop and pass_mtf:
                     total_long_trades += 1
-                    multiplier = 0.5 if (long_pos is not None and long_pos.get("entries_count", 0) >= 5) else 1.0
+                    multiplier = 0.5 if (long_pos is not None and long_pos.get("entries_count", 0) >= 3) else 1.0
                     effective_trade_amount = trade_amount_usd * multiplier
                     add_qty = (effective_trade_amount * leverage) / cur_close
                     if long_pos is None:
@@ -386,7 +386,7 @@ class BacktestEngine:
 
                 if pass_chop and pass_mtf:
                     total_short_trades += 1
-                    multiplier = 0.5 if (short_pos is not None and short_pos.get("entries_count", 0) >= 5) else 1.0
+                    multiplier = 0.5 if (short_pos is not None and short_pos.get("entries_count", 0) >= 3) else 1.0
                     effective_trade_amount = trade_amount_usd * multiplier
                     add_qty = (effective_trade_amount * leverage) / cur_close
                     if short_pos is None:
