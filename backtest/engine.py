@@ -164,14 +164,18 @@ class BacktestEngine:
                     })
                     long_pos = None
                 elif long_pos is not None:
-                    # Check Max Loss Exit (>=10: $250, >=7: $200, >5: $150, else $100)
+                    # Check Max Loss Exit (>=15: $350, >=12: $300, >=10: $250, >=7: $200, >5: $150, else $100)
                     avg_e = long_pos["avg_entry"]
                     qty = long_pos["qty"]
                     entries_cnt = long_pos["entries_count"]
                     dca_cnt = max(0, entries_cnt - 1)
-                    if entries_cnt >= 10:
+                    if dca_cnt >= 15 or entries_cnt >= 15:
+                        max_loss_threshold = 350.0
+                    elif dca_cnt >= 12 or entries_cnt >= 12:
+                        max_loss_threshold = 300.0
+                    elif entries_cnt >= 10 or dca_cnt >= 9:
                         max_loss_threshold = 250.0
-                    elif entries_cnt >= 7:
+                    elif entries_cnt >= 7 or dca_cnt >= 6:
                         max_loss_threshold = 200.0
                     elif dca_cnt > 5 or entries_cnt > 5:
                         max_loss_threshold = 150.0
@@ -259,14 +263,18 @@ class BacktestEngine:
                     })
                     short_pos = None
                 elif short_pos is not None:
-                    # Check Max Loss Exit (>=10: $250, >=7: $200, >5: $150, else $100)
+                    # Check Max Loss Exit (>=15: $350, >=12: $300, >=10: $250, >=7: $200, >5: $150, else $100)
                     avg_e = short_pos["avg_entry"]
                     qty = short_pos["qty"]
                     entries_cnt = short_pos["entries_count"]
                     dca_cnt = max(0, entries_cnt - 1)
-                    if entries_cnt >= 10:
+                    if dca_cnt >= 15 or entries_cnt >= 15:
+                        max_loss_threshold = 350.0
+                    elif dca_cnt >= 12 or entries_cnt >= 12:
+                        max_loss_threshold = 300.0
+                    elif entries_cnt >= 10 or dca_cnt >= 9:
                         max_loss_threshold = 250.0
-                    elif entries_cnt >= 7:
+                    elif entries_cnt >= 7 or dca_cnt >= 6:
                         max_loss_threshold = 200.0
                     elif dca_cnt > 5 or entries_cnt > 5:
                         max_loss_threshold = 150.0

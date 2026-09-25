@@ -742,13 +742,19 @@ class ExecutionHandler:
             dca_count = max(0, entries_count - 1)
             
             # 0. Check Max Loss Stop-Loss:
+            # - DCA count >= 15 (or Total entries >= 15): $350 max loss
+            # - DCA count >= 12 (or Total entries >= 12): $300 max loss
             # - Total entries >= 10: $250 max loss
             # - Total entries >= 7: $200 max loss
             # - Total entries > 5 (or DCA count > 5): $150 max loss
             # - Otherwise: $100 max loss
-            if entries_count >= 10:
+            if dca_count >= 15 or entries_count >= 15:
+                max_loss_threshold = 350.0
+            elif dca_count >= 12 or entries_count >= 12:
+                max_loss_threshold = 300.0
+            elif entries_count >= 10 or dca_count >= 9:
                 max_loss_threshold = 250.0
-            elif entries_count >= 7:
+            elif entries_count >= 7 or dca_count >= 6:
                 max_loss_threshold = 200.0
             elif dca_count > 5 or entries_count > 5:
                 max_loss_threshold = 150.0
