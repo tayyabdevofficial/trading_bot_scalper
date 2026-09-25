@@ -462,15 +462,7 @@
                 }
 
                 // Format timestamp to Pakistan Time (GMT+5)
-                let openTimeDisplay = '—';
-                if (pos.timestamp) {
-                    try {
-                        const utcDate = new Date(pos.timestamp);
-                        openTimeDisplay = utcDate.toLocaleString("en-US", { timeZone: "Asia/Karachi" });
-                    } catch (e) {
-                        openTimeDisplay = pos.timestamp;
-                    }
-                }
+                const openTimeDisplay = formatPKT(pos.timestamp);
 
                 // Status Alert Badge & Retry Button
                 let alertBadge = '<span style="color: var(--text-muted); font-size: 0.8rem;">Standard</span>';

@@ -649,20 +649,8 @@
                 const orderIdShort = ordIdRaw ? (ordIdRaw.length > 16 ? ordIdRaw.substring(0, 8) + '...' + ordIdRaw.slice(-6) : ordIdRaw) : '—';
                 const orderIdDisplay = `<span class="mono" style="font-size:0.78rem; color:var(--text-muted); cursor:pointer;" title="${ordIdRaw}">${orderIdShort}</span>`;
 
-                let openTime = '—';
-                if (t.open_timestamp || t.created_at) {
-                    const rawO = t.open_timestamp || t.created_at;
-                    try {
-                        openTime = new Date(rawO).toLocaleString("en-US", { timeZone: "Asia/Karachi" });
-                    } catch (e) { openTime = rawO; }
-                }
-                let closeTime = '—';
-                if (t.timestamp || t.updated_at) {
-                    const rawC = t.timestamp || t.updated_at;
-                    try {
-                        closeTime = new Date(rawC).toLocaleString("en-US", { timeZone: "Asia/Karachi" });
-                    } catch (e) { closeTime = rawC; }
-                }
+                let openTime = formatPKT(t.open_timestamp || t.created_at);
+                let closeTime = formatPKT(t.timestamp || t.updated_at);
 
                 const openPrice = Number(t.open_price || t.entry_price) || 0.0;
                 const closePrice = Number(t.price || t.close_price) || 0.0;

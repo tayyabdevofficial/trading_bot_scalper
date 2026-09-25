@@ -633,7 +633,7 @@
 
                 html += `
                     <tr class="signal-row">
-                        <td class="mono" style="font-size:0.8rem; color:var(--text-muted); white-space:nowrap;">${sig.timestamp || '—'}</td>
+                        <td class="mono" style="font-size:0.8rem; color:var(--text-muted); white-space:nowrap;">${formatPKT(sig.timestamp)}</td>
                         <td>${netBadge}</td>
                         <td class="mono" style="font-weight:700;">${sig.bot_id ? `#${sig.bot_id}` : '—'}</td>
                         <td class="mono" style="font-weight:700; color:var(--accent-blue);">${sig.symbol || '—'}</td>

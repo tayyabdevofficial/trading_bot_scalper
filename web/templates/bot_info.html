@@ -494,15 +494,7 @@
                         }
 
                         // Format timestamp to Pakistan Time (GMT+5)
-                        let openTimeDisplay = '—';
-                        if (pos.timestamp) {
-                            try {
-                                const utcDate = new Date(pos.timestamp);
-                                openTimeDisplay = utcDate.toLocaleString("en-US", { timeZone: "Asia/Karachi" });
-                            } catch (e) {
-                                openTimeDisplay = pos.timestamp;
-                            }
-                        }
+                        const openTimeDisplay = formatPKT(pos.timestamp);
 
                         const posDcaBadge = (pos.entries_count && pos.entries_count > 1)
                             ? `<span style="background:rgba(168,85,247,0.18); color:#c084fc; border:1px solid rgba(168,85,247,0.35); padding:1px 6px; border-radius:4px; font-size:0.72rem; font-weight:700; margin-left:4px;" title="${pos.entries_count} Total Entries">DCA (${pos.entries_count}x)</span>`
@@ -539,18 +531,8 @@
                         const pnlClass = t.realized_pnl >= 0 ? 'pnl-text pos' : 'pnl-text neg';
                         const formattedPnl = t.realized_pnl >= 0 ? `+$${t.realized_pnl.toFixed(2)}` : `-$${Math.abs(t.realized_pnl).toFixed(2)}`;
 
-                        let openTime = '—';
-                        if (t.open_timestamp) {
-                            try {
-                                openTime = new Date(t.open_timestamp).toLocaleString("en-US", { timeZone: "Asia/Karachi" });
-                            } catch (e) { openTime = t.open_timestamp; }
-                        }
-                        let closeTime = '—';
-                        if (t.timestamp) {
-                            try {
-                                closeTime = new Date(t.timestamp).toLocaleString("en-US", { timeZone: "Asia/Karachi" });
-                            } catch (e) { closeTime = t.timestamp; }
-                        }
+                        const openTime = formatPKT(t.open_timestamp);
+                        const closeTime = formatPKT(t.timestamp);
 
                         const openPrice = t.open_price || 0.0;
                         const leverage = t.leverage || 5;

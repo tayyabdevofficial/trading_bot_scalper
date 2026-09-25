@@ -756,7 +756,7 @@
                                 </div>
                                 <div class="detail-item" style="margin-top: 0.4rem;">
                                     <span class="detail-label">Age</span>
-                                    <span class="detail-value">${formatAge(pos.timestamp)}</span>
+                                    <span class="detail-value" title="Opened (PKT): ${formatPKT(pos.timestamp)}">${formatAge(pos.timestamp)}</span>
                                 </div>
                                 ${pos.tp_targets && pos.tp_targets.length > 0 ? `
                                 <div class="detail-item" style="grid-column: span 3; margin-top: 0.4rem;">

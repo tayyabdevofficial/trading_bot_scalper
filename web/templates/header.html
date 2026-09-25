@@ -208,7 +208,12 @@
     <div class="header-top-bar">
         <div class="logo-section">
             <h1><i data-lucide="zap" style="color: var(--accent-purple);"></i> Tayyab Scalper</h1>
-            <p id="headerSubtitle">Advanced Concurrent Multi-Bot &amp; Strategy Management System</p>
+            <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.25rem;">
+                <p id="headerSubtitle" style="margin: 0;">Advanced Concurrent Multi-Bot &amp; Strategy Management System</p>
+                <span id="headerPktClock" style="font-size: 0.75rem; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.25); color: #7dd3fc; padding: 0.2rem 0.55rem; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem;">
+                    <i data-lucide="clock" style="width: 12px; height: 12px;"></i> PKT: --:--:--
+                </span>
+            </div>
         </div>
         <button type="button" id="mobileNavToggle" class="mobile-nav-toggle-btn" onclick="toggleMobileNav(event)" aria-label="Toggle Navigation Menu">
             <span id="mobileNavLabel" style="font-size:0.8rem; font-weight:600;">Menu</span>
@@ -232,6 +237,44 @@
     </div>
 </header>
 <script>
+    // Universal Pakistan Standard Time (PKT / Asia/Karachi, UTC+5) Formatter
+    window.formatPKT = function(ts) {
+        if (!ts) return '—';
+        try {
+            let str = String(ts).trim();
+            if (str.length >= 19 && !str.includes('T')) {
+                str = str.replace(' ', 'T') + (str.endsWith('Z') || str.includes('+') ? '' : 'Z');
+            } else if (!str.endsWith('Z') && !str.includes('+')) {
+                str = str + 'Z';
+            }
+            const d = new Date(str);
+            if (isNaN(d.getTime())) return ts;
+            return d.toLocaleString("en-US", {
+                timeZone: "Asia/Karachi",
+                year: "numeric",
+                month: "short",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: true
+            });
+        } catch (e) {
+            return ts;
+        }
+    };
+
+    function updatePktClock() {
+        const el = document.getElementById('headerPktClock');
+        if (!el) return;
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString("en-US", { timeZone: "Asia/Karachi", hour12: true });
+        el.innerHTML = `<i data-lucide="clock" style="width: 12px; height: 12px;"></i> PKT: ${timeStr}`;
+        if (window.lucide) lucide.createIcons();
+    }
+    setInterval(updatePktClock, 1000);
+    updatePktClock();
+
     function toggleMobileNav(e) {
         if (e) e.stopPropagation();
         const nav = document.getElementById('mainHeaderButtons');
