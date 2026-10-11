@@ -15,28 +15,48 @@ class KlineDataLoader:
         return os.path.join(CACHE_DIR, f"{symbol.upper()}_{interval}_{days}d.csv")
 
     @classmethod
-    def load_klines(cls, symbol: str, interval: str, days: int = 30, force_refresh: bool = False) -> pd.DataFrame:
+    def load_klines(
+        cls,
+        symbol: str,
+        interval: str,
+        days: int = 30,
+        start_date: str = None,
+        end_date: str = None,
+        force_refresh: bool = False
+    ) -> pd.DataFrame:
         """
         Load historical klines for symbol and interval.
         Uses local CSV cache if available; otherwise fetches from Binance fapi and caches locally.
+        Can optionally filter by start_date and end_date in-memory without modifying the cached file.
         """
         cache_path = cls.get_cache_path(symbol, interval, days)
-        fallback_30d = cls.get_cache_path(symbol, interval, 30)
 
-        for path in [cache_path, fallback_30d]:
-            if not force_refresh and os.path.exists(path):
-                try:
-                    df = pd.read_csv(path)
-                    if not df.empty and len(df) > 50:
-                        df["timestamp"] = pd.to_datetime(df["timestamp"])
-                        return df
-                except Exception as e:
-                    pass
+        df = pd.DataFrame()
+        if not force_refresh and os.path.exists(cache_path):
+            try:
+                df = pd.read_csv(cache_path)
+                if not df.empty and len(df) > 50:
+                    df["timestamp"] = pd.to_datetime(df["timestamp"])
+            except Exception as e:
+                df = pd.DataFrame()
 
-        # Fetch from Binance fapi
-        df = cls._fetch_from_binance(symbol, interval, days)
-        if not df.empty:
-            df.to_csv(cache_path, index=False)
+        if df.empty:
+            # Fetch from Binance fapi
+            df = cls._fetch_from_binance(symbol, interval, days)
+            if not df.empty:
+                df.to_csv(cache_path, index=False)
+                df["timestamp"] = pd.to_datetime(df["timestamp"])
+
+        if df.empty:
+            return df
+
+        # Apply in-memory date range filtering without altering the disk file
+        if start_date:
+            df = df[df["timestamp"] >= pd.to_datetime(start_date)].copy()
+        if end_date:
+            df = df[df["timestamp"] <= pd.to_datetime(end_date)].copy()
+
+        df.reset_index(drop=True, inplace=True)
         return df
 
     @classmethod

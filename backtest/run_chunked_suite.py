@@ -22,109 +22,109 @@ STRATEGY_TEMPLATES = [
         "strategy_type": "REVERSION",
         "use_chop_filter": False,
         "use_mtf_filter": False,
-        "tp_5m": 1.5,
-        "tp_15m": 2.0,
+        "tp_5m": 1.0,
+        "tp_15m": 1.0,
         "params": {"rsi_period": 14, "stoch_period": 14, "k_period": 3, "d_period": 3, "buy_threshold": 20.0, "sell_threshold": 80.0, "max_adx": 28.0}
     },
-    {
-        "name": "Keltner_Channel_Breakout",
-        "strategy_type": "TREND",
-        "use_chop_filter": False,
-        "use_mtf_filter": False,
-        "tp_5m": 2.0,
-        "tp_15m": 3.0,
-        "params": {"ema_period": 20, "atr_period": 14, "atr_mult": 2.0, "min_adx": 22.0}
-    },
-    {
-        "name": "RSI_Divergence_Scalp",
-        "strategy_type": "REVERSION",
-        "use_chop_filter": False,
-        "use_mtf_filter": False,
-        "tp_5m": 1.5,
-        "tp_15m": 2.5,
-        "params": {"lookback": 25, "rsi_period": 14, "ema_trend": 50}
-    },
-    {
-        "name": "Bollinger_Bands",
-        "strategy_type": "REVERSION",
-        "use_chop_filter": False,
-        "use_mtf_filter": False,
-        "tp_5m": 1.5,
-        "tp_15m": 2.0,
-        "params": {"period": 20, "num_std": 2.0, "rsi_period": 14, "max_adx": 28.0}
-    },
-    {
-        "name": "Engulfing_Volume_Scalp",
-        "strategy_type": "TREND",
-        "use_chop_filter": False,
-        "use_mtf_filter": False,
-        "tp_5m": 1.5,
-        "tp_15m": 2.5,
-        "params": {"vol_mult": 1.5, "vol_period": 20, "body_mult": 1.2}
-    },
-    {
-        "name": "EMA_RSI_Crossover",
-        "strategy_type": "TREND",
-        "use_chop_filter": False,
-        "use_mtf_filter": False,
-        "tp_5m": 1.5,
-        "tp_15m": 2.5,
-        "params": {"ema_short": 9, "ema_long": 21, "rsi_period": 14, "rsi_overbought": 70, "rsi_oversold": 30}
-    },
-    {
-        "name": "SuperTrend",
-        "strategy_type": "TREND",
-        "use_chop_filter": False,
-        "use_mtf_filter": False,
-        "tp_5m": 2.0,
-        "tp_15m": 3.0,
-        "params": {"period": 10, "multiplier": 3.0}
-    },
+    # {
+    #     "name": "Keltner_Channel_Breakout",
+    #     "strategy_type": "TREND",
+    #     "use_chop_filter": False,
+    #     "use_mtf_filter": False,
+    #     "tp_5m": 1.0,
+    #     "tp_15m": 1.0,
+    #     "params": {"ema_period": 20, "atr_period": 14, "atr_mult": 2.0, "min_adx": 22.0}
+    # },
+    # {
+    #     "name": "RSI_Divergence_Scalp",
+    #     "strategy_type": "REVERSION",
+    #     "use_chop_filter": False,
+    #     "use_mtf_filter": False,
+    #     "tp_5m": 1.0,
+    #     "tp_15m": 1.0,
+    #     "params": {"lookback": 25, "rsi_period": 14, "ema_trend": 50}
+    # },
+    # {
+    #     "name": "Bollinger_Bands",
+    #     "strategy_type": "REVERSION",
+    #     "use_chop_filter": False,
+    #     "use_mtf_filter": False,
+    #     "tp_5m": 1.0,
+    #     "tp_15m": 1.0,
+    #     "params": {"period": 20, "num_std": 2.0, "rsi_period": 14, "max_adx": 28.0}
+    # },
+    # {
+    #     "name": "Engulfing_Volume_Scalp",
+    #     "strategy_type": "TREND",
+    #     "use_chop_filter": False,
+    #     "use_mtf_filter": False,
+    #     "tp_5m": 1.0,
+    #     "tp_15m": 1.0,
+    #     "params": {"vol_mult": 1.5, "vol_period": 20, "body_mult": 1.2}
+    # },
+    # {
+    #     "name": "EMA_RSI_Crossover",
+    #     "strategy_type": "TREND",
+    #     "use_chop_filter": False,
+    #     "use_mtf_filter": False,
+    #     "tp_5m": 1.0,
+    #     "tp_15m": 1.0,
+    #     "params": {"ema_short": 9, "ema_long": 21, "rsi_period": 14, "rsi_overbought": 70, "rsi_oversold": 30}
+    # },
+    # {
+    #     "name": "SuperTrend",
+    #     "strategy_type": "TREND",
+    #     "use_chop_filter": False,
+    #     "use_mtf_filter": False,
+    #     "tp_5m": 1.0,
+    #     "tp_15m": 1.0,
+    #     "params": {"period": 10, "multiplier": 3.0}
+    # },
     {
         "name": "Hull_MA_Scalp",
         "strategy_type": "TREND",
         "use_chop_filter": False,
         "use_mtf_filter": False,
-        "tp_5m": 1.5,
-        "tp_15m": 2.5,
+        "tp_5m": 1.0,
+        "tp_15m": 1.0,
         "params": {"period": 9, "rsi_period": 14}
     },
-    {
-        "name": "EMA_Ribbon_Scalp",
-        "strategy_type": "TREND",
-        "use_chop_filter": False,
-        "use_mtf_filter": False,
-        "tp_5m": 1.5,
-        "tp_15m": 2.5,
-        "params": {"fast_period": 5, "med_period": 8, "slow_period": 13, "base_period": 21}
-    },
-    {
-        "name": "Volume_Delta_Scalp",
-        "strategy_type": "TREND",
-        "use_chop_filter": False,
-        "use_mtf_filter": False,
-        "tp_5m": 1.5,
-        "tp_15m": 2.5,
-        "params": {"vol_mult": 2.0, "vol_period": 20, "rsi_period": 14}
-    },
+    # {
+    #     "name": "EMA_Ribbon_Scalp",
+    #     "strategy_type": "TREND",
+    #     "use_chop_filter": False,
+    #     "use_mtf_filter": False,
+    #     "tp_5m": 1.0,
+    #     "tp_15m": 1.0,
+    #     "params": {"fast_period": 5, "med_period": 8, "slow_period": 13, "base_period": 21}
+    # },
+    # {
+    #     "name": "Volume_Delta_Scalp",
+    #     "strategy_type": "TREND",
+    #     "use_chop_filter": False,
+    #     "use_mtf_filter": False,
+    #     "tp_5m": 1.0,
+    #     "tp_15m": 1.0,
+    #     "params": {"vol_mult": 2.0, "vol_period": 20, "rsi_period": 14}
+    # },
     {
         "name": "MACD_ZeroCross_Scalp",
         "strategy_type": "TREND",
         "use_chop_filter": False,
         "use_mtf_filter": False,
-        "tp_5m": 1.5,
-        "tp_15m": 2.5,
+        "tp_5m": 1.0,
+        "tp_15m": 1.0,
         "params": {"fast": 3, "slow": 10, "signal": 16}
     },
-    {
-        "name": "Squeeze_Momentum_Scalp",
-        "strategy_type": "TREND",
-        "use_chop_filter": False,
-        "use_mtf_filter": False,
-        "tp_5m": 2.0,
-        "tp_15m": 3.0,
-        "params": {"bb_period": 20, "bb_std": 2.0, "kc_period": 20, "kc_mult": 1.5, "mom_period": 12}
-    }
+    # {
+    #     "name": "Squeeze_Momentum_Scalp",
+    #     "strategy_type": "TREND",
+    #     "use_chop_filter": False,
+    #     "use_mtf_filter": False,
+    #     "tp_5m": 1.0,
+    #     "tp_15m": 1.0,
+    #     "params": {"bb_period": 20, "bb_std": 2.0, "kc_period": 20, "kc_mult": 1.5, "mom_period": 12}
+    # }
 ]
 
 TIMEFRAMES = ["5m", "15m"]
@@ -135,9 +135,18 @@ def get_all_symbols(db: Database) -> List[str]:
     symbols = sorted([r["symbol"].upper() for r in rows])
     return symbols
 
-def run_chunked_backtest(chunk_size: int = 10, days: int = 30):
+def run_chunked_backtest(
+    chunk_size: int = 25,
+    start_date: str = "2026-09-01 00:00:00",
+    end_date: str = "2026-09-24 23:59:59",
+    force_recalculate: bool = True
+):
     db = Database(os.path.join(os.path.dirname(os.path.dirname(__file__)), "trading_bot.db"))
     all_symbols = get_all_symbols(db)
+
+    if force_recalculate:
+        print("Clearing previous backtest_results table for fresh rerun...")
+        db.clear_backtest_results()
 
     # Generate all test tasks: 13 strategies * 2 timeframes = 26 suites
     test_suites = []
@@ -156,7 +165,7 @@ def run_chunked_backtest(chunk_size: int = 10, days: int = 30):
 
     print("=" * 110)
     print(f"DUAL-TIMEFRAME (5m & 15m) DCA & TP-ONLY HISTORICAL BACKTESTING ENGINE")
-    print(f"Total Symbols: {len(all_symbols)} | Chunk Size: {chunk_size} | Backtest Period: {days} Days")
+    print(f"Total Symbols: {len(all_symbols)} | Chunk Size: {chunk_size} | Backtest Period: {start_date} -> {end_date}")
     print(f"Strategies: {len(STRATEGY_TEMPLATES)} | Timeframes: {TIMEFRAMES} | Total Suites: {len(test_suites)}")
     print(f"Total Combinations to Test: {len(all_symbols) * len(test_suites):,}")
     print("=" * 110)
@@ -177,7 +186,7 @@ def run_chunked_backtest(chunk_size: int = 10, days: int = 30):
         params = cfg["params"]
 
         print("\n" + "#" * 110)
-        print(f"SUITE {suite_idx}/{len(test_suites)}: {strat_name} [{tf.upper()}] (TP: {tp_pct}%, No SL, DCA Averaging, Independent Long/Short)")
+        print(f"SUITE {suite_idx}/{len(test_suites)}: {strat_name} [{tf.upper()}] (TP: {tp_pct}%, DCA Averaging, Independent Long/Short)")
         print("#" * 110)
 
         strat_cls = STRATEGY_MAP.get(strat_name)
@@ -203,39 +212,40 @@ def run_chunked_backtest(chunk_size: int = 10, days: int = 30):
             print("-" * 115)
 
             def eval_symbol(sym):
-                with db.get_connection() as conn:
-                    cur = conn.cursor()
-                    cur.execute("""
-                        SELECT total_trades, closed_trades, total_long_trades, total_short_trades,
-                               closed_long_trades, closed_short_trades, win_trades, loss_trades, win_rate,
-                               released_pnl, unreleased_pnl, open_trades_count, total_pnl,
-                               profit_factor, max_drawdown
-                        FROM backtest_results
-                        WHERE symbol = ? AND strategy_name = ? AND timeframe = ? AND total_long_trades IS NOT NULL
-                    """, (sym, strat_name, tf))
-                    row = cur.fetchone()
-                if row and row["total_long_trades"] is not None:
-                    return {
-                        "symbol": sym,
-                        "total_trades": row["total_trades"],
-                        "total_long_trades": row["total_long_trades"],
-                        "total_short_trades": row["total_short_trades"],
-                        "closed_trades": row["closed_trades"],
-                        "closed_long_trades": row["closed_long_trades"],
-                        "closed_short_trades": row["closed_short_trades"],
-                        "win_trades": row["win_trades"],
-                        "loss_trades": row["loss_trades"],
-                        "win_rate": row["win_rate"],
-                        "released_pnl": row["released_pnl"],
-                        "unreleased_pnl": row["unreleased_pnl"],
-                        "open_trades_count": row["open_trades_count"],
-                        "total_pnl": row["total_pnl"],
-                        "profit_factor": row["profit_factor"],
-                        "max_drawdown": row["max_drawdown"],
-                        "cached": True
-                    }
+                if not force_recalculate:
+                    with db.get_connection() as conn:
+                        cur = conn.cursor()
+                        cur.execute("""
+                            SELECT total_trades, closed_trades, total_long_trades, total_short_trades,
+                                   closed_long_trades, closed_short_trades, win_trades, loss_trades, win_rate,
+                                   released_pnl, unreleased_pnl, open_trades_count, total_pnl,
+                                   profit_factor, max_drawdown
+                            FROM backtest_results
+                            WHERE symbol = ? AND strategy_name = ? AND timeframe = ? AND total_long_trades IS NOT NULL
+                        """, (sym, strat_name, tf))
+                        row = cur.fetchone()
+                    if row and row["total_long_trades"] is not None:
+                        return {
+                            "symbol": sym,
+                            "total_trades": row["total_trades"],
+                            "total_long_trades": row["total_long_trades"],
+                            "total_short_trades": row["total_short_trades"],
+                            "closed_trades": row["closed_trades"],
+                            "closed_long_trades": row["closed_long_trades"],
+                            "closed_short_trades": row["closed_short_trades"],
+                            "win_trades": row["win_trades"],
+                            "loss_trades": row["loss_trades"],
+                            "win_rate": row["win_rate"],
+                            "released_pnl": row["released_pnl"],
+                            "unreleased_pnl": row["unreleased_pnl"],
+                            "open_trades_count": row["open_trades_count"],
+                            "total_pnl": row["total_pnl"],
+                            "profit_factor": row["profit_factor"],
+                            "max_drawdown": row["max_drawdown"],
+                            "cached": True
+                        }
 
-                df = KlineDataLoader.load_klines(sym, tf, days=days)
+                df = KlineDataLoader.load_klines(sym, tf, start_date=start_date, end_date=end_date)
                 if df.empty or len(df) < 55:
                     return None
 
@@ -245,7 +255,7 @@ def run_chunked_backtest(chunk_size: int = 10, days: int = 30):
                     stop_loss_pct=0.0,
                     take_profit_pct=tp_pct,
                     leverage=20,
-                    trade_amount_usd=20.0,
+                    trade_amount_usd=10.0,
                     use_chop_filter=chop_f,
                     use_mtf_filter=mtf_f,
                     strategy_type=stype
@@ -254,7 +264,7 @@ def run_chunked_backtest(chunk_size: int = 10, days: int = 30):
                 res["cached"] = False
                 return res
 
-            with ThreadPoolExecutor(max_workers=5) as executor:
+            with ThreadPoolExecutor(max_workers=8) as executor:
                 chunk_results = list(executor.map(eval_symbol, chunk))
 
             for res in chunk_results:
@@ -278,7 +288,7 @@ def run_chunked_backtest(chunk_size: int = 10, days: int = 30):
                 mdd = res["max_drawdown"]
                 events = res.get("trade_events")
 
-                if not res.get("cached", False) and r_pnl > 0 and r_pnl >= (2.0 * t_cnt):
+                if not res.get("cached", False) and t_cnt > 0:
                     db.save_backtest_result(
                         symbol=sym,
                         strategy_name=strat_name,
@@ -299,7 +309,7 @@ def run_chunked_backtest(chunk_size: int = 10, days: int = 30):
                         total_pnl=tot_pnl,
                         profit_factor=pf,
                         max_drawdown=mdd,
-                        period=f"{days}d",
+                        period=f"{start_date[:10]} to {end_date[:10]}",
                         trade_events=events
                     )
 
@@ -371,5 +381,32 @@ def run_chunked_backtest(chunk_size: int = 10, days: int = 30):
         print(f"{r['strategy']:<26} | {r['timeframe']:<5} | {r['symbols']:<8} | {r['trades']:<8} | {r['win_rate']:>6.2f}%    | {r_str:>14} | {u_str:>15} | {t_str:>13} | {r['top_symbol']:<10}")
     print("#" * 115)
 
+    # Export to Excel & CSV
+    try:
+        with db.get_connection() as conn:
+            df_export = pd.read_sql_query("""
+                SELECT symbol, strategy_name, timeframe, total_trades, closed_trades,
+                       total_long_trades, total_short_trades, closed_long_trades, closed_short_trades,
+                       win_trades, loss_trades, win_rate, released_pnl, unreleased_pnl,
+                       open_trades_count, total_pnl, profit_factor, max_drawdown, period
+                FROM backtest_results
+                ORDER BY total_pnl DESC
+            """, conn)
+
+        csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "backtest_results_sept_to_oct.csv")
+        xlsx_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "backtest_results_sept_to_oct.xlsx")
+        df_export.to_csv(csv_path, index=False)
+        df_export.to_excel(xlsx_path, index=False)
+        print(f"\nSuccessfully exported {len(df_export)} backtest results to:")
+        print(f"  - {csv_path}")
+        print(f"  - {xlsx_path}")
+    except Exception as exp_err:
+        print(f"Export notice: {exp_err}")
+
 if __name__ == "__main__":
-    run_chunked_backtest(chunk_size=10, days=60)
+    run_chunked_backtest(
+        chunk_size=25,
+        start_date="2026-09-01 00:00:00",
+        end_date="2026-10-08 23:59:59",
+        force_recalculate=True
+    )

@@ -16,7 +16,6 @@ class Database:
         conn = sqlite3.connect(self.db_path, timeout=60.0)
         conn.row_factory = sqlite3.Row
         try:
-            conn.execute("PRAGMA journal_mode=WAL;")
             conn.execute("PRAGMA busy_timeout=60000;")
         except Exception:
             pass
@@ -246,6 +245,12 @@ class Database:
                 except Exception:
                     pass
             
+            conn.commit()
+            try:
+                cursor.execute("PRAGMA journal_mode=WAL;")
+                cursor.execute("PRAGMA synchronous=NORMAL;")
+            except Exception:
+                pass
             conn.commit()
 
     # --- BOT INSTANCE MANAGEMENT ---

@@ -29,9 +29,9 @@ class BacktestEngine:
         strategy,
         df: pd.DataFrame,
         stop_loss_pct: float = 0.0,
-        take_profit_pct: float = 2.0,
+        take_profit_pct: float = 1.0,
         leverage: int = 20,
-        trade_amount_usd: float = 20.0,
+        trade_amount_usd: float = 10.0,
         use_chop_filter: bool = False,
         use_mtf_filter: bool = False,
         strategy_type: str = "TREND"
@@ -164,23 +164,12 @@ class BacktestEngine:
                     })
                     long_pos = None
                 elif long_pos is not None:
-                    # Check Max Loss Exit (>=15: $350, >=12: $300, >=10: $250, >=7: $200, >5: $150, else $100)
+                    # Check Max Loss Exit (Double of position opened total trade amount)
                     avg_e = long_pos["avg_entry"]
                     qty = long_pos["qty"]
                     entries_cnt = long_pos["entries_count"]
-                    dca_cnt = max(0, entries_cnt - 1)
-                    if dca_cnt >= 15 or entries_cnt >= 15:
-                        max_loss_threshold = 350.0
-                    elif dca_cnt >= 12 or entries_cnt >= 12:
-                        max_loss_threshold = 300.0
-                    elif entries_cnt >= 10 or dca_cnt >= 9:
-                        max_loss_threshold = 250.0
-                    elif entries_cnt >= 7 or dca_cnt >= 6:
-                        max_loss_threshold = 200.0
-                    elif dca_cnt > 5 or entries_cnt > 5:
-                        max_loss_threshold = 150.0
-                    else:
-                        max_loss_threshold = 100.0
+                    invested_usd = long_pos.get("invested_usd", entries_cnt * trade_amount_usd)
+                    max_loss_threshold = 2.0 * invested_usd
                     unrealized_pnl = (cur_low - avg_e) * qty
                     if unrealized_pnl <= -max_loss_threshold:
                         exit_price = cur_low
@@ -263,23 +252,12 @@ class BacktestEngine:
                     })
                     short_pos = None
                 elif short_pos is not None:
-                    # Check Max Loss Exit (>=15: $350, >=12: $300, >=10: $250, >=7: $200, >5: $150, else $100)
+                    # Check Max Loss Exit (Double of position opened total trade amount)
                     avg_e = short_pos["avg_entry"]
                     qty = short_pos["qty"]
                     entries_cnt = short_pos["entries_count"]
-                    dca_cnt = max(0, entries_cnt - 1)
-                    if dca_cnt >= 15 or entries_cnt >= 15:
-                        max_loss_threshold = 350.0
-                    elif dca_cnt >= 12 or entries_cnt >= 12:
-                        max_loss_threshold = 300.0
-                    elif entries_cnt >= 10 or dca_cnt >= 9:
-                        max_loss_threshold = 250.0
-                    elif entries_cnt >= 7 or dca_cnt >= 6:
-                        max_loss_threshold = 200.0
-                    elif dca_cnt > 5 or entries_cnt > 5:
-                        max_loss_threshold = 150.0
-                    else:
-                        max_loss_threshold = 100.0
+                    invested_usd = short_pos.get("invested_usd", entries_cnt * trade_amount_usd)
+                    max_loss_threshold = 2.0 * invested_usd
                     unrealized_pnl = (avg_e - cur_high) * qty
                     if unrealized_pnl <= -max_loss_threshold:
                         exit_price = cur_high
@@ -335,8 +313,7 @@ class BacktestEngine:
 
                 if pass_chop and pass_mtf:
                     total_long_trades += 1
-                    multiplier = 0.5 if (long_pos is not None and long_pos.get("entries_count", 0) >= 4) else 1.0
-                    effective_trade_amount = trade_amount_usd * multiplier
+                    effective_trade_amount = trade_amount_usd
                     add_qty = (effective_trade_amount * leverage) / cur_close
                     if long_pos is None:
                         # Open new Long position
@@ -347,7 +324,8 @@ class BacktestEngine:
                             "tp_price": tp_p,
                             "entry_time": cur_time,
                             "entry_unix": cur_unix,
-                            "entries_count": 1
+                            "entries_count": 1,
+                            "invested_usd": effective_trade_amount
                         }
                         entry_num = 1
                     else:
@@ -359,6 +337,7 @@ class BacktestEngine:
                         long_pos["qty"] = new_qty
                         long_pos["avg_entry"] = new_avg
                         long_pos["entries_count"] += 1
+                        long_pos["invested_usd"] = long_pos.get("invested_usd", 0.0) + effective_trade_amount
                         entry_num = long_pos["entries_count"]
 
                     trade_events.append({
@@ -394,8 +373,7 @@ class BacktestEngine:
 
                 if pass_chop and pass_mtf:
                     total_short_trades += 1
-                    multiplier = 0.5 if (short_pos is not None and short_pos.get("entries_count", 0) >= 4) else 1.0
-                    effective_trade_amount = trade_amount_usd * multiplier
+                    effective_trade_amount = trade_amount_usd
                     add_qty = (effective_trade_amount * leverage) / cur_close
                     if short_pos is None:
                         # Open new Short position
@@ -406,7 +384,8 @@ class BacktestEngine:
                             "tp_price": tp_p,
                             "entry_time": cur_time,
                             "entry_unix": cur_unix,
-                            "entries_count": 1
+                            "entries_count": 1,
+                            "invested_usd": effective_trade_amount
                         }
                         entry_num = 1
                     else:
@@ -418,6 +397,7 @@ class BacktestEngine:
                         short_pos["qty"] = new_qty
                         short_pos["avg_entry"] = new_avg
                         short_pos["entries_count"] += 1
+                        short_pos["invested_usd"] = short_pos.get("invested_usd", 0.0) + effective_trade_amount
                         entry_num = short_pos["entries_count"]
 
                     trade_events.append({

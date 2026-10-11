@@ -437,12 +437,27 @@ class ExecutionHandler:
         if tp_price > 0:
             tp_price = round(float(tp_price), price_precision)
 
+        # Determine trade amount invested for this order
+        bot_trade_amount = None
+        bot_leverage = 20
+        if self.db and self.bot_id:
+            bot = self.db.get_bot(self.bot_id)
+            if bot:
+                bot_trade_amount = float(bot.get("parameters", {}).get("trade_amount_usd") or 0.0)
+                bot_leverage = int(bot.get("parameters", {}).get("leverage") or 20)
+
+        if not bot_trade_amount or bot_trade_amount <= 0:
+            bot_trade_amount = (float(qty) * float(price)) / bot_leverage if bot_leverage > 0 else (float(qty) * float(price))
+
+        current_invested = round(bot_trade_amount, 4)
+
         pos_id = f"pos_{int(time.time() * 1000)}_{self.bot_id}_{uuid.uuid4().hex[:6]}"
         sim_order_id = f"ORD_SIM_{self.network.upper()}_{self.bot_id}_{int(time.time() * 1000)}_{uuid.uuid4().hex[:6]}"
 
         new_pos = {
             "pos_id": pos_id,
             "order_id": sim_order_id,
+            "primary_order_id": sim_order_id,
             "order_ids": [sim_order_id],
             "symbol": symbol.upper(),
             "side": side.upper(),
@@ -454,6 +469,7 @@ class ExecutionHandler:
             "tp_targets": [],
             "released_pnl": 0.0,
             "entries_count": 1,
+            "invested_usd": round(bot_trade_amount, 4),
             "timestamp": datetime.utcnow().isoformat()
         }
 
@@ -476,6 +492,7 @@ class ExecutionHandler:
                     
                 new_tp = avg_entry_price * (1 + bot_tp_pct/100) if side.upper() == "BUY" else avg_entry_price * (1 - bot_tp_pct/100)
                 existing_pos["entries_count"] = existing_pos.get("entries_count", 1) + 1
+                existing_pos["invested_usd"] = round(existing_pos.get("invested_usd", 0.0) + current_invested, 4)
                 existing_pos["original_qty"] = round(total_qty, qty_precision)
                 existing_pos["qty"] = round(total_qty, qty_precision)
                 existing_pos["entry_price"] = round(avg_entry_price, price_precision)
@@ -484,7 +501,9 @@ class ExecutionHandler:
                 existing_pos["tp_targets"] = self.calculate_tp_targets(side, avg_entry_price, total_qty, bot_tp_pct, price_precision, qty_precision)
                 existing_pos["timestamp"] = datetime.utcnow().isoformat()
                 existing_pos.setdefault("order_ids", []).append(sim_order_id)
-                existing_pos["order_id"] = sim_order_id
+                if "primary_order_id" not in existing_pos:
+                    existing_pos["primary_order_id"] = existing_pos.get("order_ids", [sim_order_id])[0]
+                existing_pos["order_id"] = existing_pos["primary_order_id"]
             else:
                 initial_tp = price * (1 + bot_tp_pct/100) if side.upper() == "BUY" else price * (1 - bot_tp_pct/100)
                 new_pos["tp_price"] = round(initial_tp, price_precision)
@@ -618,6 +637,7 @@ class ExecutionHandler:
                 await self.cancel_direction_orders(symbol, side, existing_pos)
 
                 existing_pos["entries_count"] = existing_pos.get("entries_count", 1) + 1
+                existing_pos["invested_usd"] = round(existing_pos.get("invested_usd", 0.0) + current_invested, 4)
                 existing_pos["original_qty"] = round(total_qty, qty_precision)
                 existing_pos["qty"] = round(total_qty, qty_precision)
                 existing_pos["entry_price"] = round(avg_entry_price, price_precision)
@@ -625,7 +645,9 @@ class ExecutionHandler:
                 existing_pos["sl_price"] = round(new_sl, price_precision) if new_sl > 0 else 0.0
                 existing_pos["timestamp"] = datetime.utcnow().isoformat()
                 existing_pos.setdefault("order_ids", []).append(order_id)
-                existing_pos["order_id"] = order_id
+                if "primary_order_id" not in existing_pos:
+                    existing_pos["primary_order_id"] = existing_pos.get("order_ids", [order_id])[0]
+                existing_pos["order_id"] = existing_pos["primary_order_id"]
                 existing_pos["status"] = "ACTIVE"
                 existing_pos["tp_targets"] = self.calculate_tp_targets(side, avg_entry_price, total_qty, bot_tp_pct, price_precision, qty_precision)
             else:
@@ -633,6 +655,7 @@ class ExecutionHandler:
                 new_pos["entry_price"] = entry_price
                 new_pos["tp_price"] = round(initial_tp, price_precision)
                 new_pos["order_id"] = order_id
+                new_pos["primary_order_id"] = order_id
                 new_pos["order_ids"] = [order_id]
                 new_pos["tp_targets"] = self.calculate_tp_targets(side, entry_price, float(qty), bot_tp_pct, price_precision, qty_precision)
                 new_pos["status"] = "ACTIVE"
@@ -741,36 +764,28 @@ class ExecutionHandler:
             entries_count = int(pos.get("entries_count") or 1)
             dca_count = max(0, entries_count - 1)
             
-            # 0. Check Max Loss Stop-Loss:
-            # - DCA count >= 15 (or Total entries >= 15): $350 max loss
-            # - DCA count >= 12 (or Total entries >= 12): $300 max loss
-            # - Total entries >= 10: $250 max loss
-            # - Total entries >= 7: $200 max loss
-            # - Total entries > 5 (or DCA count > 5): $150 max loss
-            # - Otherwise: $100 max loss
-            if dca_count >= 15 or entries_count >= 15:
-                max_loss_threshold = 350.0
-            elif dca_count >= 12 or entries_count >= 12:
-                max_loss_threshold = 300.0
-            elif entries_count >= 10 or dca_count >= 9:
-                max_loss_threshold = 250.0
-            elif entries_count >= 7 or dca_count >= 6:
-                max_loss_threshold = 200.0
-            elif dca_count > 5 or entries_count > 5:
-                max_loss_threshold = 150.0
-            else:
-                max_loss_threshold = 100.0
+            # 0. Check Max Loss Stop-Loss (Double of position opened total trade amount / invested USD):
+            invested_usd = float(pos.get("invested_usd") or 0.0)
+            if invested_usd <= 0:
+                bot_trade_amt = 20.0
+                if self.db and self.bot_id:
+                    bot = self.db.get_bot(self.bot_id)
+                    if bot:
+                        bot_trade_amt = float(bot.get("parameters", {}).get("trade_amount_usd") or 20.0)
+                invested_usd = entries_count * bot_trade_amt
+
+            max_loss_threshold = 2.0 * invested_usd
 
             unrealized_pnl = (current_price - entry_price) * qty if side == "BUY" else (entry_price - current_price) * qty
             if unrealized_pnl <= -max_loss_threshold:
                 logger.warning(
                     f"Bot {self.bot_id} [{pos.get('symbol')}] MAX LOSS STOP TRIGGERED: "
-                    f"Position ({entries_count}x entries / {dca_count}x DCA) Loss is ${abs(unrealized_pnl):.2f} (<= -${max_loss_threshold:.2f}). Auto-closing position on Binance."
+                    f"Position ({entries_count}x entries, Invested: ${invested_usd:.2f}) Loss is ${abs(unrealized_pnl):.2f} (<= -${max_loss_threshold:.2f} limit). Auto-closing position on Binance."
                 )
                 if self.db:
                     self.db.log_message(
                         "WARNING",
-                        f"[{pos.get('symbol')}] Max Loss Stop triggered ({entries_count}x entries / {dca_count}x DCA, Loss: ${unrealized_pnl:.2f}, limit: ${max_loss_threshold:.0f}). Auto-closing position.",
+                        f"[{pos.get('symbol')}] Max Loss Stop triggered ({entries_count}x entries, Invested: ${invested_usd:.2f}, Loss: ${unrealized_pnl:.2f}, limit: ${max_loss_threshold:.0f}). Auto-closing position.",
                         bot_id=self.bot_id
                     )
                 await self.close_position(current_price, "MAX_LOSS_EXIT", unrealized_pnl, side, pos_to_close=pos)
@@ -799,6 +814,16 @@ class ExecutionHandler:
                 
             if trigger_sl:
                 pnl = (current_price - entry_price) * pos["qty"] if side == "BUY" else (entry_price - current_price) * pos["qty"]
+                logger.warning(
+                    f"Bot {self.bot_id} [{pos.get('symbol')}] STOP LOSS TRIGGERED: "
+                    f"Price {current_price} crossed SL {sl}. Auto-closing position on Binance."
+                )
+                if self.db:
+                    self.db.log_message(
+                        "WARNING",
+                        f"[{pos.get('symbol')}] Stop Loss triggered at {current_price} (SL: {sl}). Auto-closing position.",
+                        bot_id=self.bot_id
+                    )
                 await self.close_position(current_price, "STOP_LOSS", pnl, side, pos_to_close=pos)
                 continue
 
@@ -1002,11 +1027,19 @@ class ExecutionHandler:
         symbol = target_pos["symbol"]
         pos_side = target_pos["side"]
         qty = target_pos["qty"]
-        target_ord_id = target_pos.get("order_id") or f"ORD_{int(time.time() * 1000)}_{self.bot_id}"
-        primary_ord_id = target_pos.get("order_ids", [target_ord_id])[0] if target_pos.get("order_ids") else target_ord_id
+        target_ord_id = target_pos.get("primary_order_id") or target_pos.get("order_id") or f"ORD_{int(time.time() * 1000)}_{self.bot_id}"
+        primary_ord_id = target_pos.get("primary_order_id") or (target_pos.get("order_ids", [target_ord_id])[0] if target_pos.get("order_ids") else target_ord_id)
+        target_ord_id = primary_ord_id
         entries_count = target_pos.get("entries_count", 1)
         close_side = "SELL" if pos_side == "BUY" else "BUY"
-        exit_status = "SL_HIT" if reason == "STOP_LOSS" else ("OPPOSITE_SIGNAL_CLOSED" if "OPPOSITE" in reason.upper() else "CLOSED")
+        if reason in ("TAKE_PROFIT", "TP") or "TP" in reason.upper():
+            exit_status = "TP_HIT"
+        elif reason in ("STOP_LOSS", "MAX_LOSS_EXIT", "SL") or "LOSS" in reason.upper():
+            exit_status = "SL_HIT"
+        elif "OPPOSITE" in reason.upper():
+            exit_status = "OPPOSITE_SIGNAL_CLOSED"
+        else:
+            exit_status = "CLOSED"
 
         # ── SIMULATION CLOSE ──
         if self.simulation_mode:
@@ -1040,6 +1073,7 @@ class ExecutionHandler:
                 pos_key = f"active_position_bot_{self.bot_id}" if self.bot_id else "active_position"
                 self.db.set_state(pos_key, self.active_position)
                 
+                trade_exit_oid = f"POS_{primary_ord_id}_EXIT_{reason}_{int(time.time() * 1000)}"
                 self.db.log_trade(
                     symbol=symbol,
                     side=close_side,
@@ -1047,7 +1081,7 @@ class ExecutionHandler:
                     price=current_price,
                     qty=qty,
                     realized_pnl=pnl,
-                    order_id=f"POS_{target_ord_id}_EXIT_{reason}_{int(time.time() * 1000)}",
+                    order_id=trade_exit_oid,
                     bot_id=self.bot_id
                 )
                 self.db.log_pnl(self.virtual_balance, pnl)
@@ -1061,7 +1095,7 @@ class ExecutionHandler:
         # ── LIVE / REAL POSITION CLOSING ──
         try:
             close_price = current_price
-            order_id = f"POS_{target_ord_id}_EXIT_{reason}_{int(time.time() * 1000)}"
+            order_id = f"POS_{primary_ord_id}_EXIT_{reason}_{int(time.time() * 1000)}"
 
             if not reason.startswith("PARTIAL_TP_") and not reason.startswith("EXCHANGE_SYNC"):
                 try:
@@ -1078,7 +1112,6 @@ class ExecutionHandler:
                         close_params["positionSide"] = "LONG" if pos_side == "BUY" else "SHORT"
                         
                     res = await self._send_request("POST", "/fapi/v1/order", close_params, action=f"CLOSE_POSITION_{reason}")
-                    order_id = str(res.get("orderId", order_id))
                     close_price = float(res.get("avgPrice", current_price)) or current_price
                     logger.info(f"[{self.network.upper()}] Bot {self.bot_id} MARKET close sent for {pos_side} {symbol} via {reason} @ {close_price}")
                 except Exception as e:
@@ -1091,7 +1124,6 @@ class ExecutionHandler:
                         await asyncio.sleep(1.0)
                         try:
                             res = await self._send_request("POST", "/fapi/v1/order", close_params, action="RETRY_CLOSE_POSITION")
-                            order_id = str(res.get("orderId", order_id))
                             close_price = float(res.get("avgPrice", current_price)) or current_price
                         except Exception as retry_err:
                             logger.error(f"Retry market close failed: {retry_err}")
@@ -1128,6 +1160,7 @@ class ExecutionHandler:
                             entries_count=1
                         )
 
+                trade_exit_oid = f"POS_{primary_ord_id}_EXIT_{reason}_{int(time.time() * 1000)}"
                 self.db.log_trade(
                     symbol=symbol,
                     side=close_side,
@@ -1135,7 +1168,7 @@ class ExecutionHandler:
                     price=close_price,
                     qty=qty,
                     realized_pnl=pnl,
-                    order_id=order_id,
+                    order_id=trade_exit_oid,
                     bot_id=self.bot_id
                 )
                 try:

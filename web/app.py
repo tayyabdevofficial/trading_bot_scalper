@@ -1161,8 +1161,42 @@ def _get_closed_positions_unified(bot_id=None, network_filter=None):
     seen_cycles = set()
     seen_closures = set()
     
+    # 0. Load bots map to reliably assign strategy_name
+    bots_map = {}
+    try:
+        bots_map = {b["id"]: b for b in db.get_bots()}
+    except Exception:
+        pass
+    
     net = None if network_filter in (None, "all") else network_filter.lower()
-    orders = db.get_orders(bot_id=bot_id, network=net, limit=500)
+    
+    # 1. Collect all known order records from orders table to seed seen_order_ids and track bots managed by orders table
+    bots_with_orders = set()
+    bot_earliest_order_ts = {}
+    try:
+        with db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT order_id, bot_id, symbol, created_at, updated_at, status FROM orders")
+            all_raw_orders = [dict(r) for r in cursor.fetchall()]
+            for ro in all_raw_orders:
+                roid = str(ro.get("order_id") or "")
+                if roid:
+                    seen_order_ids.add(roid)
+                    seen_order_ids.add(f"POS_{roid}")
+                    seen_order_ids.add(f"POS_{roid}_ENTRY")
+                    seen_order_ids.add(f"POS_{roid}_EXIT")
+                b = ro.get("bot_id")
+                if b is not None:
+                    bots_with_orders.add(b)
+                    ts = str(ro.get("created_at") or "")
+                    if ts:
+                        if b not in bot_earliest_order_ts or ts < bot_earliest_order_ts[b]:
+                            bot_earliest_order_ts[b] = ts
+    except Exception as e:
+        logger.warning(f"Error fetching orders metadata: {e}")
+
+    # Process closed orders from orders table (the authoritative source)
+    orders = db.get_orders(bot_id=bot_id, network=net, limit=5000)
     for ord_row in orders:
         if ord_row["status"] in ("TP_HIT", "SL_HIT", "CLOSED", "OPPOSITE_SIGNAL_CLOSED", "CANCELLED"):
             oid = str(ord_row["order_id"] or "")
@@ -1194,12 +1228,15 @@ def _get_closed_positions_unified(bot_id=None, network_filter=None):
                     
             ord_net = (ord_row.get("network") or ("testnet" if "SIM" in oid.upper() else "mainnet")).lower()
             ord_entries = int(ord_row.get("entries_count") or 1)
+            bot_info = bots_map.get(b_id)
+            strat_name = bot_info.get("strategy_name", "") if bot_info else ""
+            
             all_positions.append({
                 "order_id": oid,
                 "bot_id": ord_row["bot_id"],
                 "network": ord_net,
                 "symbol": ord_row["symbol"],
-                "strategy_name": "",
+                "strategy_name": strat_name,
                 "open_timestamp": format_utc_timestamp(ord_row["created_at"]),
                 "timestamp": format_utc_timestamp(ord_row["updated_at"] or ord_row["created_at"]),
                 "created_at": format_utc_timestamp(ord_row["created_at"]),
@@ -1219,7 +1256,7 @@ def _get_closed_positions_unified(bot_id=None, network_filter=None):
                 "dca_count": max(0, ord_entries - 1)
             })
             
-    # 2. Fetch from trades table for legacy trades not already captured in orders
+    # 2. Fetch from trades table ONLY for legacy trades not already captured in orders table
     with db.get_connection() as conn:
         cursor = conn.cursor()
         query = """
@@ -1237,14 +1274,35 @@ def _get_closed_positions_unified(bot_id=None, network_filter=None):
         query += " ORDER BY t.timestamp ASC"
         cursor.execute(query, params)
         trades = [dict(row) for row in cursor.fetchall()]
+        
+        # Filter trades: Ignore trades from bots whose lifecycle is already tracked in orders
+        legacy_trades_to_parse = []
         for t in trades:
             t_oid = str(t.get("order_id") or "")
+            t_bid = t.get("bot_id")
+            t_ts = str(t.get("timestamp") or "")
+            
+            # If bot is managed by orders table and trade occurred after orders began, skip
+            if t_bid in bots_with_orders:
+                earliest_ts = bot_earliest_order_ts.get(t_bid, "")
+                if earliest_ts and t_ts >= earliest_ts:
+                    continue
+
+            # If order_id or base order_id is already in orders table, skip
+            if t_oid in seen_order_ids:
+                continue
+            if t_oid.startswith("POS_"):
+                core_id = t_oid.replace("POS_", "").split("_")[0]
+                if core_id in seen_order_ids:
+                    continue
+
             t_net = t.get("bot_net") or t.get("network")
             if not t_net:
                 t_net = "testnet" if ("SIM" in t_oid.upper() or "TESTNET" in t_oid.upper()) else "mainnet"
             t["network"] = str(t_net).lower()
+            legacy_trades_to_parse.append(t)
 
-        legacy_cycles = group_trades_into_positions(trades)
+        legacy_cycles = group_trades_into_positions(legacy_trades_to_parse)
         for cyc in legacy_cycles:
             cyc_oid = str(cyc.get("order_id") or "")
             cyc_entry_oids = [str(eoid) for eoid in cyc.get("entry_order_ids", [])]
@@ -1257,6 +1315,7 @@ def _get_closed_positions_unified(bot_id=None, network_filter=None):
             
             # Skip if already captured in orders table
             is_seen = (
+                cyc_bot in bots_with_orders or
                 cyc_oid in seen_order_ids or
                 any(eoid in seen_order_ids for eoid in cyc_entry_oids) or
                 any(eoid.replace("POS_", "").replace("_ENTRY", "") in seen_order_ids for eoid in cyc_entry_oids) or
