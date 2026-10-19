@@ -30,15 +30,19 @@ class KlineDataLoader:
         Can optionally filter by start_date and end_date in-memory without modifying the cached file.
         """
         cache_path = cls.get_cache_path(symbol, interval, days)
+        alt_cache_path = cls.get_cache_path(symbol, interval, 60 if days != 60 else 30)
 
         df = pd.DataFrame()
-        if not force_refresh and os.path.exists(cache_path):
-            try:
-                df = pd.read_csv(cache_path)
-                if not df.empty and len(df) > 50:
-                    df["timestamp"] = pd.to_datetime(df["timestamp"])
-            except Exception as e:
-                df = pd.DataFrame()
+        if not force_refresh:
+            for p in [cache_path, alt_cache_path]:
+                if os.path.exists(p):
+                    try:
+                        df = pd.read_csv(p)
+                        if not df.empty and len(df) > 50:
+                            df["timestamp"] = pd.to_datetime(df["timestamp"])
+                            break
+                    except Exception:
+                        df = pd.DataFrame()
 
         if df.empty:
             # Fetch from Binance fapi

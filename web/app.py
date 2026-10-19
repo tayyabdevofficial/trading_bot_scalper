@@ -1196,65 +1196,65 @@ def _get_closed_positions_unified(bot_id=None, network_filter=None):
         logger.warning(f"Error fetching orders metadata: {e}")
 
     # Process closed orders from orders table (the authoritative source)
-    orders = db.get_orders(bot_id=bot_id, network=net, limit=5000)
+    closed_statuses = ("TP_HIT", "SL_HIT", "CLOSED", "OPPOSITE_SIGNAL_CLOSED", "CANCELLED")
+    orders = db.get_orders(bot_id=bot_id, network=net, status=closed_statuses, limit=None)
     for ord_row in orders:
-        if ord_row["status"] in ("TP_HIT", "SL_HIT", "CLOSED", "OPPOSITE_SIGNAL_CLOSED", "CANCELLED"):
-            oid = str(ord_row["order_id"] or "")
-            seen_order_ids.add(oid)
-            seen_order_ids.add(f"POS_{oid}")
-            seen_order_ids.add(f"POS_{oid}_ENTRY")
-            seen_order_ids.add(f"POS_{oid}_EXIT")
-            
-            created_raw = str(ord_row.get("created_at") or "")
-            updated_raw = str(ord_row.get("updated_at") or "")
-            b_id = ord_row.get("bot_id")
-            sym = ord_row.get("symbol")
-            bot_sym = f"{b_id}_{sym}"
-            
-            seen_cycles.add(f"{bot_sym}_{created_raw}")
-            seen_cycles.add(f"{bot_sym}_{format_utc_timestamp(created_raw)}")
-            if updated_raw:
-                seen_cycles.add(f"{bot_sym}_{updated_raw}")
-                seen_cycles.add(f"{bot_sym}_{format_utc_timestamp(updated_raw)}")
-                seen_closures.add((b_id, sym, updated_raw))
-                seen_closures.add((b_id, sym, format_utc_timestamp(updated_raw)))
-            
-            tp_targets = []
-            if ord_row.get("tp_targets"):
-                try:
-                    tp_targets = json.loads(ord_row["tp_targets"])
-                except:
-                    pass
-                    
-            ord_net = (ord_row.get("network") or ("testnet" if "SIM" in oid.upper() else "mainnet")).lower()
-            ord_entries = int(ord_row.get("entries_count") or 1)
-            bot_info = bots_map.get(b_id)
-            strat_name = bot_info.get("strategy_name", "") if bot_info else ""
-            
-            all_positions.append({
-                "order_id": oid,
-                "bot_id": ord_row["bot_id"],
-                "network": ord_net,
-                "symbol": ord_row["symbol"],
-                "strategy_name": strat_name,
-                "open_timestamp": format_utc_timestamp(ord_row["created_at"]),
-                "timestamp": format_utc_timestamp(ord_row["updated_at"] or ord_row["created_at"]),
-                "created_at": format_utc_timestamp(ord_row["created_at"]),
-                "updated_at": format_utc_timestamp(ord_row["updated_at"] or ord_row["created_at"]),
-                "qty": ord_row["qty"],
-                "price": ord_row["close_price"] or ord_row["entry_price"],
-                "open_price": ord_row["entry_price"],
-                "realized_pnl": ord_row["realized_pnl"] or 0.0,
-                "type": ord_row["status"],
-                "status": ord_row["status"],
-                "side": ord_row["side"],
-                "tps_hit": 1 if ord_row["status"] == "TP_HIT" else 0,
-                "tps_total": 1,
-                "tp_targets": tp_targets,
-                "leverage": 20,
-                "entries_count": ord_entries,
-                "dca_count": max(0, ord_entries - 1)
-            })
+        oid = str(ord_row["order_id"] or "")
+        seen_order_ids.add(oid)
+        seen_order_ids.add(f"POS_{oid}")
+        seen_order_ids.add(f"POS_{oid}_ENTRY")
+        seen_order_ids.add(f"POS_{oid}_EXIT")
+        
+        created_raw = str(ord_row.get("created_at") or "")
+        updated_raw = str(ord_row.get("updated_at") or "")
+        b_id = ord_row.get("bot_id")
+        sym = ord_row.get("symbol")
+        bot_sym = f"{b_id}_{sym}"
+        
+        seen_cycles.add(f"{bot_sym}_{created_raw}")
+        seen_cycles.add(f"{bot_sym}_{format_utc_timestamp(created_raw)}")
+        if updated_raw:
+            seen_cycles.add(f"{bot_sym}_{updated_raw}")
+            seen_cycles.add(f"{bot_sym}_{format_utc_timestamp(updated_raw)}")
+            seen_closures.add((b_id, sym, updated_raw))
+            seen_closures.add((b_id, sym, format_utc_timestamp(updated_raw)))
+        
+        tp_targets = []
+        if ord_row.get("tp_targets"):
+            try:
+                tp_targets = json.loads(ord_row["tp_targets"])
+            except:
+                pass
+                
+        ord_net = (ord_row.get("network") or ("testnet" if "SIM" in oid.upper() else "mainnet")).lower()
+        ord_entries = int(ord_row.get("entries_count") or 1)
+        bot_info = bots_map.get(b_id)
+        strat_name = bot_info.get("strategy_name", "") if bot_info else ""
+        
+        all_positions.append({
+            "order_id": oid,
+            "bot_id": ord_row["bot_id"],
+            "network": ord_net,
+            "symbol": ord_row["symbol"],
+            "strategy_name": strat_name,
+            "open_timestamp": format_utc_timestamp(ord_row["created_at"]),
+            "timestamp": format_utc_timestamp(ord_row["updated_at"] or ord_row["created_at"]),
+            "created_at": format_utc_timestamp(ord_row["created_at"]),
+            "updated_at": format_utc_timestamp(ord_row["updated_at"] or ord_row["created_at"]),
+            "qty": ord_row["qty"],
+            "price": ord_row["close_price"] or ord_row["entry_price"],
+            "open_price": ord_row["entry_price"],
+            "realized_pnl": ord_row["realized_pnl"] or 0.0,
+            "type": ord_row["status"],
+            "status": ord_row["status"],
+            "side": ord_row["side"],
+            "tps_hit": 1 if ord_row["status"] == "TP_HIT" else 0,
+            "tps_total": 1,
+            "tp_targets": tp_targets,
+            "leverage": 20,
+            "entries_count": ord_entries,
+            "dca_count": max(0, ord_entries - 1)
+        })
             
     # 2. Fetch from trades table ONLY for legacy trades not already captured in orders table
     with db.get_connection() as conn:

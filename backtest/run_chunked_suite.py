@@ -10,6 +10,13 @@ from concurrent.futures import ThreadPoolExecutor
 # Ensure project root is in sys.path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
+# Ensure console output handles non-ascii symbols (e.g. Chinese meme coin symbols)
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
 from database import Database
 from backtest.data_loader import KlineDataLoader
 from backtest.engine import BacktestEngine
@@ -258,7 +265,8 @@ def run_chunked_backtest(
                     trade_amount_usd=10.0,
                     use_chop_filter=chop_f,
                     use_mtf_filter=mtf_f,
-                    strategy_type=stype
+                    strategy_type=stype,
+                    close_weekend=False
                 )
                 res["symbol"] = sym
                 res["cached"] = False
@@ -393,9 +401,9 @@ def run_chunked_backtest(
                 ORDER BY total_pnl DESC
             """, conn)
 
-        csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "backtest_results_sept_to_oct.csv")
-        xlsx_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "backtest_results_sept_to_oct.xlsx")
-        df_export.to_csv(csv_path, index=False)
+        csv_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "backtest_results_60_days.csv")
+        xlsx_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "backtest_results_60_days.xlsx")
+        df_export.to_csv(csv_path, index=False, encoding="utf-8-sig")
         df_export.to_excel(xlsx_path, index=False)
         print(f"\nSuccessfully exported {len(df_export)} backtest results to:")
         print(f"  - {csv_path}")
@@ -406,7 +414,7 @@ def run_chunked_backtest(
 if __name__ == "__main__":
     run_chunked_backtest(
         chunk_size=25,
-        start_date="2026-09-01 00:00:00",
-        end_date="2026-10-08 23:59:59",
+        start_date="2026-08-16 00:00:00",
+        end_date="2026-10-15 23:59:59",
         force_recalculate=True
     )

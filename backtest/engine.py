@@ -34,7 +34,8 @@ class BacktestEngine:
         trade_amount_usd: float = 10.0,
         use_chop_filter: bool = False,
         use_mtf_filter: bool = False,
-        strategy_type: str = "TREND"
+        strategy_type: str = "TREND",
+        close_weekend: bool = False
     ) -> Dict[str, Any]:
         if df.empty or len(df) < 55:
             return {
@@ -92,6 +93,15 @@ class BacktestEngine:
         sig_vals = signals.values
         chop_vals = chop_series.values if chop_series is not None else None
         ema_vals = ema50_series.values if ema50_series is not None else None
+
+        # Precompute Sunday weekend close flags (close every Sunday at 23:59:59)
+        if close_weekend:
+            dows = dt_series.dt.dayofweek.values
+            next_dows = np.roll(dows, -1)
+            next_dows[-1] = -1
+            weekend_closes = (dows == 6) & (next_dows != 6)
+        else:
+            weekend_closes = np.zeros(len(df), dtype=bool)
 
         trades = []
         trade_events = []
@@ -294,6 +304,91 @@ class BacktestEngine:
                             "text": f"Max SL Short: -${abs(pnl):.2f}"
                         })
                         short_pos = None
+
+            # -------------------------------------------------------------
+            # A2. Weekend Close Exit (Every Sunday at 23:59:59)
+            # -------------------------------------------------------------
+            if weekend_closes[i]:
+                if long_pos is not None:
+                    exit_price = cur_close
+                    avg_e = long_pos["avg_entry"]
+                    qty = long_pos["qty"]
+                    entries_cnt = long_pos["entries_count"]
+                    pnl = (exit_price - avg_e) * qty
+                    trades.append({
+                        "entry_time": long_pos["entry_time"],
+                        "exit_time": cur_time,
+                        "side": "BUY",
+                        "entry_price": avg_e,
+                        "exit_price": exit_price,
+                        "qty": qty,
+                        "pnl": pnl,
+                        "entries_count": entries_cnt,
+                        "exit_reason": "WEEKEND_CLOSE"
+                    })
+                    closed_long_trades += entries_cnt
+                    trade_events.append({
+                        "time": cur_unix,
+                        "time_str": cur_time,
+                        "type": "WEEKEND_CLOSE_LONG",
+                        "side": "BUY",
+                        "exit_price": round(exit_price, 6),
+                        "avg_entry": round(avg_e, 6),
+                        "qty": round(qty, 6),
+                        "pnl": round(pnl, 2),
+                        "entries_closed": entries_cnt,
+                        "exit_reason": "WEEKEND_CLOSE"
+                    })
+                    chart_markers.append({
+                        "time": cur_unix,
+                        "position": "aboveBar",
+                        "color": "#a855f7",
+                        "shape": "square",
+                        "text": f"Weekend Close Long: {('+$' if pnl >= 0 else '-$')}{abs(pnl):.2f}"
+                    })
+                    long_pos = None
+
+                if short_pos is not None:
+                    exit_price = cur_close
+                    avg_e = short_pos["avg_entry"]
+                    qty = short_pos["qty"]
+                    entries_cnt = short_pos["entries_count"]
+                    pnl = (avg_e - exit_price) * qty
+                    trades.append({
+                        "entry_time": short_pos["entry_time"],
+                        "exit_time": cur_time,
+                        "side": "SELL",
+                        "entry_price": avg_e,
+                        "exit_price": exit_price,
+                        "qty": qty,
+                        "pnl": pnl,
+                        "entries_count": entries_cnt,
+                        "exit_reason": "WEEKEND_CLOSE"
+                    })
+                    closed_short_trades += entries_cnt
+                    trade_events.append({
+                        "time": cur_unix,
+                        "time_str": cur_time,
+                        "type": "WEEKEND_CLOSE_SHORT",
+                        "side": "SELL",
+                        "exit_price": round(exit_price, 6),
+                        "avg_entry": round(avg_e, 6),
+                        "qty": round(qty, 6),
+                        "pnl": round(pnl, 2),
+                        "entries_closed": entries_cnt,
+                        "exit_reason": "WEEKEND_CLOSE"
+                    })
+                    chart_markers.append({
+                        "time": cur_unix,
+                        "position": "belowBar",
+                        "color": "#a855f7",
+                        "shape": "square",
+                        "text": f"Weekend Close Short: {('+$' if pnl >= 0 else '-$')}{abs(pnl):.2f}"
+                    })
+                    short_pos = None
+
+                # Close of Sunday candle: do not enter new positions at weekend close
+                continue
 
             # -------------------------------------------------------------
             # B. Process Signals (Candle Close) & Position Averaging (DCA)

@@ -117,6 +117,20 @@ class TradingBot:
             if self.execution.active_position:
                 await self.execution.check_and_exit_positions(current_price)
 
+            # Auto-retry unplaced TP limit orders if any position had order placement failure
+            if not self.execution.simulation_mode and self.execution.active_position:
+                has_pending_tp = any(
+                    pos.get("status") == "TP_ORDERS_FAILED" or
+                    any(not t.get("hit") and not t.get("order_id") for t in pos.get("tp_targets", []))
+                    for pos in (self.execution.active_position if isinstance(self.execution.active_position, list) else [self.execution.active_position])
+                    if pos
+                )
+                if has_pending_tp:
+                    try:
+                        await self.execution.retry_tp_orders()
+                    except Exception as e:
+                        logger.error(f"[{self.symbol}] Auto retry TP orders error: {e}")
+
             # Signal evaluation:
             # Long and Short positions run independently (matching BacktestEngine).
             # Repeated signals in the same direction execute DCA position averaging.

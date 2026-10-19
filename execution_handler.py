@@ -8,6 +8,7 @@ import aiohttp
 import urllib.parse
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Dict, List, Optional, Tuple
 from config import Config
 
@@ -41,6 +42,8 @@ class ExecutionHandler:
     _rate_timestamps: collections.deque = collections.deque(maxlen=20)
     _RATE_LIMIT_CALLS: int = 18
     _RATE_LIMIT_WINDOW: float = 10.0        # seconds
+    _precisions_cache: dict = {}
+    _precisions_lock: asyncio.Lock = None
 
     def __init__(self, db=None, bot_id=None, simulation_mode=None, use_testnet=None, network=None):
         self.db = db
@@ -96,40 +99,67 @@ class ExecutionHandler:
                 self.active_position = []
 
     @staticmethod
-    def _decimals_from_step(step_str: str) -> int:
-        """Derive number of decimal places from a tick/step size string e.g. '0.10' → 1, '0.001' → 3."""
-        step_str = step_str.rstrip("0")          # "0.10000000" → "0.1"
-        if "." in step_str:
-            return len(step_str.split(".")[-1])  # "0.1" → 1, "0.01" → 2
-        return 0                                  # "1" → 0
-
-    async def get_symbol_precisions(self, symbol: str):
-        symbol = symbol.upper()
-        if not hasattr(self, "_precisions_cache"):
-            self._precisions_cache = {}
-        if symbol in self._precisions_cache:
-            return self._precisions_cache[symbol]
-
+    def _decimals_from_step(step_str) -> int:
+        """Derive number of decimal places from a tick/step size string e.g. '0.10' → 1, '0.0000001' → 7."""
+        if not step_str:
+            return 2
         try:
-            url = f"{self.base_url}/fapi/v1/exchangeInfo"
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=10) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        for s in data.get("symbols", []):
-                            sym = s["symbol"].upper()
-                            price_prec = int(s["pricePrecision"])   # fallback
-                            qty_prec   = int(s["quantityPrecision"]) # fallback
-                            for f in s.get("filters", []):
-                                if f["filterType"] == "PRICE_FILTER" and f.get("tickSize"):
-                                    price_prec = self._decimals_from_step(f["tickSize"])
-                                elif f["filterType"] == "LOT_SIZE" and f.get("stepSize"):
-                                    qty_prec = self._decimals_from_step(f["stepSize"])
-                            self._precisions_cache[sym] = (price_prec, qty_prec)
-            if symbol in self._precisions_cache:
-                return self._precisions_cache[symbol]
-        except Exception as e:
-            logger.error(f"Error fetching exchange info for precision: {e}")
+            d = Decimal(str(step_str).rstrip("0"))
+            return max(0, -d.as_tuple().exponent)
+        except Exception:
+            step_str = str(step_str).rstrip("0")
+            if "." in step_str:
+                return len(step_str.split(".")[-1])
+            return 0
+
+    @staticmethod
+    def format_price(price: float, precision: int) -> str:
+        """Format price cleanly with exact decimal precision, avoiding scientific notation."""
+        p = float(price)
+        if precision <= 0:
+            return str(int(round(p)))
+        return f"{p:.{precision}f}"
+
+    @staticmethod
+    def format_qty(qty: float, precision: int) -> str:
+        """Format quantity cleanly with exact decimal precision, avoiding scientific notation."""
+        q = float(qty)
+        if precision <= 0:
+            return str(int(round(q)))
+        return f"{q:.{precision}f}"
+
+    async def get_symbol_precisions(self, symbol: str, current_price: float = None) -> Tuple[int, int]:
+        symbol = symbol.upper()
+        if symbol in ExecutionHandler._precisions_cache:
+            return ExecutionHandler._precisions_cache[symbol]
+
+        if ExecutionHandler._precisions_lock is None:
+            ExecutionHandler._precisions_lock = asyncio.Lock()
+
+        async with ExecutionHandler._precisions_lock:
+            if symbol in ExecutionHandler._precisions_cache:
+                return ExecutionHandler._precisions_cache[symbol]
+
+            try:
+                url = f"{self.base_url}/fapi/v1/exchangeInfo"
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, timeout=10) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            for s in data.get("symbols", []):
+                                sym = s["symbol"].upper()
+                                price_prec = int(s.get("pricePrecision", 2))
+                                qty_prec = int(s.get("quantityPrecision", 4))
+                                for f in s.get("filters", []):
+                                    if f["filterType"] == "PRICE_FILTER" and f.get("tickSize"):
+                                        price_prec = self._decimals_from_step(f["tickSize"])
+                                    elif f["filterType"] == "LOT_SIZE" and f.get("stepSize"):
+                                        qty_prec = self._decimals_from_step(f["stepSize"])
+                                ExecutionHandler._precisions_cache[sym] = (price_prec, qty_prec)
+                if symbol in ExecutionHandler._precisions_cache:
+                    return ExecutionHandler._precisions_cache[symbol]
+            except Exception as e:
+                logger.error(f"Error fetching exchange info for precision: {e}")
 
         # Fallbacks based on actual Binance tick sizes
         if symbol == "BTCUSDT":
@@ -146,7 +176,28 @@ class ExecutionHandler:
             return 5, 1
         elif symbol == "DOGEUSDT":
             return 5, 0
-        return 2, 4
+
+        # Dynamic fallback based on current price magnitude to preserve small decimals (e.g. 0.0000841)
+        if current_price and float(current_price) > 0:
+            cp = float(current_price)
+            if cp < 0.0001:
+                return 7, 0
+            elif cp < 0.001:
+                return 6, 0
+            elif cp < 0.01:
+                return 5, 1
+            elif cp < 0.1:
+                return 4, 1
+            elif cp < 1.0:
+                return 4, 2
+            elif cp < 10.0:
+                return 3, 2
+            elif cp < 1000.0:
+                return 2, 3
+            else:
+                return 1, 3
+
+        return 4, 2
 
     def _signature(self, query_string):
         return hmac.new(
@@ -198,7 +249,15 @@ class ExecutionHandler:
         params = params or {}
         params["timestamp"] = int(time.time() * 1000)
 
-        query_string = urllib.parse.urlencode(params)
+        # Prevent scientific notation serialization (e.g. 8.41e-05) for any float parameter
+        clean_params = {}
+        for k, v in params.items():
+            if isinstance(v, float):
+                clean_params[k] = f"{v:.10f}".rstrip("0").rstrip(".")
+            else:
+                clean_params[k] = v
+
+        query_string = urllib.parse.urlencode(clean_params)
         signature = self._signature(query_string)
         query_string += f"&signature={signature}"
 
@@ -361,14 +420,31 @@ class ExecutionHandler:
         available = wallet_balance - total_margin
         return max(0.0, available)
 
-    def calculate_tp_targets(self, side, entry_price, qty, take_profit_pct, price_precision=2, qty_precision=4):
+    def calculate_tp_targets(self, side, entry_price, qty, take_profit_pct, price_precision=None, qty_precision=None):
         """Divide Take Profit targets into multiple levels if TP > 1%."""
+        ep = float(entry_price)
+        q = float(qty)
+
+        if price_precision is None:
+            if ep < 0.0001:
+                price_precision = 7
+            elif ep < 0.01:
+                price_precision = 5
+            elif ep < 1.0:
+                price_precision = 4
+            else:
+                price_precision = 2
+
+        if qty_precision is None:
+            qty_precision = 4 if q < 10 else (2 if q < 1000 else 0)
+
         num_tps = int(take_profit_pct)
         if num_tps <= 1:
-            tp_price = entry_price * (1 + take_profit_pct/100) if side == "BUY" else entry_price * (1 - take_profit_pct/100)
+            tp_price = ep * (1 + take_profit_pct/100) if side.upper() == "BUY" else ep * (1 - take_profit_pct/100)
+            target_qty = round(q, qty_precision) if qty_precision > 0 else int(round(q))
             return [{
                 "target_price": round(tp_price, price_precision),
-                "qty": round(qty, qty_precision),
+                "qty": target_qty,
                 "hit": False,
                 "pct": 100,
                 "order_id": None
@@ -376,23 +452,23 @@ class ExecutionHandler:
             
         targets = []
         step = take_profit_pct / num_tps
-        remaining_qty = qty
+        remaining_qty = q
         
         for i in range(1, num_tps + 1):
             tp_pct = step * i
-            tp_price = entry_price * (1 + tp_pct/100) if side == "BUY" else entry_price * (1 - tp_pct/100)
+            tp_price = ep * (1 + tp_pct/100) if side.upper() == "BUY" else ep * (1 - tp_pct/100)
             
             if i == num_tps:
-                tp_qty = remaining_qty
+                tp_qty = round(remaining_qty, qty_precision) if qty_precision > 0 else int(round(remaining_qty))
             else:
-                tp_qty = round(qty / num_tps, qty_precision)
+                tp_qty = round(q / num_tps, qty_precision) if qty_precision > 0 else int(round(q / num_tps))
                 remaining_qty -= tp_qty
                 
             pct_closed = round((i / num_tps) * 100)
             
             targets.append({
                 "target_price": round(tp_price, price_precision),
-                "qty": round(tp_qty, qty_precision),
+                "qty": tp_qty,
                 "hit": False,
                 "pct": pct_closed,
                 "order_id": None
@@ -417,7 +493,7 @@ class ExecutionHandler:
         is_dca = (existing_pos is not None)
 
         # Precisions
-        price_precision, qty_precision = await self.get_symbol_precisions(symbol)
+        price_precision, qty_precision = await self.get_symbol_precisions(symbol, current_price=float(price))
 
         # Calculate TP targets
         bot_tp_pct = Config.TAKE_PROFIT_PCT
@@ -599,7 +675,7 @@ class ExecutionHandler:
                 "symbol": symbol.upper(),
                 "side": side.upper(),
                 "type": "MARKET",
-                "quantity": float(qty)
+                "quantity": self.format_qty(qty, qty_precision)
             }
             if is_hedge:
                 params["positionSide"] = "LONG" if side.upper() == "BUY" else "SHORT"
@@ -725,14 +801,17 @@ class ExecutionHandler:
 
             # Place TP Limit orders on Binance
             target_list = existing_pos["tp_targets"] if is_dca else new_pos["tp_targets"]
+            tp_placement_failed = False
             for target in target_list:
                 try:
+                    tp_price_val = float(target["target_price"])
+                    tp_qty_val = float(target["qty"])
                     tp_params = {
                         "symbol": symbol.upper(),
                         "side": "SELL" if side.upper() == "BUY" else "BUY",
                         "type": "LIMIT",
-                        "price": float(target["target_price"]),
-                        "quantity": float(target["qty"]),
+                        "price": self.format_price(tp_price_val, price_precision),
+                        "quantity": self.format_qty(tp_qty_val, qty_precision),
                         "timeInForce": "GTC"
                     }
                     if is_hedge:
@@ -742,7 +821,17 @@ class ExecutionHandler:
                     tp_res = await self._send_request("POST", "/fapi/v1/order", tp_params, action="PLACE_TP_LIMIT")
                     target["order_id"] = str(tp_res.get("orderId"))
                 except Exception as tp_err:
+                    tp_placement_failed = True
                     logger.error(f"Failed to place TP target order: {tp_err}")
+                    if self.db:
+                        self.db.log_message("ERROR", f"[{symbol}] Failed to place TP limit order @ {target.get('target_price')}: {tp_err}", bot_id=self.bot_id)
+
+            if tp_placement_failed:
+                target_pos_ref = existing_pos if is_dca else new_pos
+                target_pos_ref["status"] = "TP_ORDERS_FAILED"
+                if self.db:
+                    pos_key = f"active_position_bot_{self.bot_id}" if self.bot_id else "active_position"
+                    self.db.set_state(pos_key, self.active_position)
 
         except Exception as post_err:
             logger.error(f"Failed in post-entry execution handler: {post_err}")
@@ -1099,13 +1188,13 @@ class ExecutionHandler:
 
             if not reason.startswith("PARTIAL_TP_") and not reason.startswith("EXCHANGE_SYNC"):
                 try:
-                    price_precision, qty_precision = await self.get_symbol_precisions(symbol)
-                    qty_to_close = int(round(float(qty))) if qty_precision == 0 else round(float(qty), qty_precision)
+                    price_precision, qty_precision = await self.get_symbol_precisions(symbol, current_price=float(current_price))
+                    qty_str = self.format_qty(qty, qty_precision)
                     close_params = {
                         "symbol": symbol.upper(),
                         "side": close_side,
                         "type": "MARKET",
-                        "quantity": float(qty_to_close)
+                        "quantity": qty_str
                     }
                     is_hedge = getattr(self, "is_hedge", False)
                     if is_hedge:
@@ -1205,18 +1294,15 @@ class ExecutionHandler:
             pnl = (current_price - entry_price) * qty if pos_side == "BUY" else (entry_price - current_price) * qty
             await self.close_position(current_price=current_price, reason=reason, pnl=pnl, side=pos_side, pos_to_close=pos)
 
-    async def retry_tp_orders(self) -> bool:
+    async def retry_tp_orders(self, side_filter: str = None) -> bool:
         """Retry placing take profit limit orders for active positions if they failed previously."""
         if not self.active_position or self.simulation_mode:
             return False
 
-        pos = self.active_position[0] if isinstance(self.active_position, list) else self.active_position
-        if not pos:
+        positions = list(self.active_position) if isinstance(self.active_position, list) else [self.active_position]
+        if not positions:
             return False
 
-        symbol = pos["symbol"]
-        side = pos["side"]
-        
         is_hedge = False
         try:
             dual_res = await self._send_request("GET", "/fapi/v1/positionSide/dual", action="CHECK_DUAL_SIDE")
@@ -1224,42 +1310,55 @@ class ExecutionHandler:
         except Exception:
             pass
 
-        tp_targets = pos.get("tp_targets", [])
-        if not tp_targets:
-            return False
-
-        placed_any = False
-        for target in tp_targets:
-            if target.get("hit") or target.get("order_id"):
+        any_placed_overall = False
+        for pos in positions:
+            if not pos:
+                continue
+            symbol = pos.get("symbol", "")
+            side = pos.get("side", "")
+            if side_filter and side.upper() != side_filter.upper():
                 continue
 
-            try:
-                tp_params = {
-                    "symbol": symbol.upper(),
-                    "side": "SELL" if side.upper() == "BUY" else "BUY",
-                    "type": "LIMIT",
-                    "price": float(target["target_price"]),
-                    "quantity": float(target["qty"]),
-                    "timeInForce": "GTC"
-                }
-                if is_hedge:
-                    tp_params["positionSide"] = "LONG" if side.upper() == "BUY" else "SHORT"
-                else:
-                    tp_params["reduceOnly"] = "true"
-                
-                tp_res = await self._send_request("POST", "/fapi/v1/order", tp_params, action="RETRY_TP_LIMIT")
-                target["order_id"] = str(tp_res.get("orderId"))
-                placed_any = True
-            except Exception as e:
-                logger.error(f"Retry TP target failed for price {target['target_price']}: {e}")
+            tp_targets = pos.get("tp_targets", [])
+            if not tp_targets:
+                continue
 
-        if placed_any:
-            still_failed = any(not t.get("hit") and not t.get("order_id") for t in tp_targets)
-            pos["status"] = "TP_ORDERS_FAILED" if still_failed else "ACTIVE"
-            if self.db:
-                pos_key = f"active_position_bot_{self.bot_id}" if self.bot_id else "active_position"
-                self.db.set_state(pos_key, self.active_position)
-                self.db.log_message("INFO", f"Manually retried and placed TP limit orders for {symbol}.", bot_id=self.bot_id)
-            return not still_failed
-            
-        return False
+            price_prec, qty_prec = await self.get_symbol_precisions(symbol, current_price=float(pos.get("entry_price", 0.0) or 0.0))
+            placed_for_pos = False
+            for target in tp_targets:
+                if target.get("hit") or target.get("order_id"):
+                    continue
+
+                try:
+                    target_p = float(target["target_price"])
+                    target_q = float(target["qty"])
+                    tp_params = {
+                        "symbol": symbol.upper(),
+                        "side": "SELL" if side.upper() == "BUY" else "BUY",
+                        "type": "LIMIT",
+                        "price": self.format_price(target_p, price_prec),
+                        "quantity": self.format_qty(target_q, qty_prec),
+                        "timeInForce": "GTC"
+                    }
+                    if is_hedge:
+                        tp_params["positionSide"] = "LONG" if side.upper() == "BUY" else "SHORT"
+                    else:
+                        tp_params["reduceOnly"] = "true"
+
+                    tp_res = await self._send_request("POST", "/fapi/v1/order", tp_params, action="RETRY_TP_LIMIT")
+                    target["order_id"] = str(tp_res.get("orderId"))
+                    placed_for_pos = True
+                    any_placed_overall = True
+                except Exception as e:
+                    logger.error(f"Retry TP target failed for price {target.get('target_price')}: {e}")
+
+            if placed_for_pos:
+                still_failed = any(not t.get("hit") and not t.get("order_id") for t in tp_targets)
+                pos["status"] = "TP_ORDERS_FAILED" if still_failed else "ACTIVE"
+
+        if any_placed_overall and self.db:
+            pos_key = f"active_position_bot_{self.bot_id}" if self.bot_id else "active_position"
+            self.db.set_state(pos_key, self.active_position)
+            self.db.log_message("INFO", f"Retried and placed TP limit orders successfully.", bot_id=self.bot_id)
+
+        return any_placed_overall

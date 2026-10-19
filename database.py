@@ -584,8 +584,13 @@ class Database:
             query += " AND bot_id = ?"
             params.append(bot_id)
         if status:
-            query += " AND status = ?"
-            params.append(status)
+            if isinstance(status, (list, tuple, set)):
+                placeholders = ",".join(["?"] * len(status))
+                query += f" AND status IN ({placeholders})"
+                params.extend(list(status))
+            else:
+                query += " AND status = ?"
+                params.append(status)
         if symbol:
             query += " AND symbol = ?"
             params.append(symbol.upper())
@@ -593,8 +598,10 @@ class Database:
             query += " AND side = ?"
             params.append(side.upper())
             
-        query += " ORDER BY updated_at DESC LIMIT ? OFFSET ?"
-        params.extend([limit, offset])
+        query += " ORDER BY updated_at DESC"
+        if limit is not None:
+            query += " LIMIT ? OFFSET ?"
+            params.extend([limit, offset])
 
         with self.get_connection() as conn:
             cursor = conn.cursor()
